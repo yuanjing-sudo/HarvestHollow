@@ -45,17 +45,22 @@ jobs:
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
 
-      - name: Launch the game and capture a screenshot
+      - name: Launch the game and capture screenshots
         run: |
-          xcrun simctl install "${{ steps.sim.outputs.udid }}" \
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl install "$UDID" \
             Apps/HarvestHollow/build/Build/Products/Debug-iphonesimulator/HarvestHollow.app
-          SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
-            xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.harvesthollow.game
-          sleep 6
-          xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot docs/screenshot-farm.png
+          for tab in farm barn market house quests; do
+            xcrun simctl terminate "$UDID" com.harvesthollow.game || true
+            SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
+            SIMCTL_CHILD_HARVEST_HOLLOW_START_TAB="$tab" \
+              xcrun simctl launch "$UDID" com.harvesthollow.game
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "docs/screenshot-$tab.png"
+          done
 
-      - name: Upload the screenshot
+      - name: Upload the screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: harvest-hollow-screenshot
-          path: docs/screenshot-farm.png
+          name: harvest-hollow-screenshots
+          path: docs/screenshot-*.png

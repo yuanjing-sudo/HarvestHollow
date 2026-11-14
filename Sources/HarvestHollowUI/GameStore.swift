@@ -120,6 +120,10 @@ public final class GameStore: ObservableObject {
         if ProcessInfo.processInfo.environment["HARVEST_HOLLOW_SKIP_WELCOME"] == "1" {
             self.showWelcome = false
         }
+        if let rawTab = ProcessInfo.processInfo.environment["HARVEST_HOLLOW_START_TAB"],
+           let tab = AppTab(rawValue: rawTab) {
+            self.selectedTab = tab
+        }
         #endif
 
         bootstrap()

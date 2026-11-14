@@ -21,9 +21,9 @@ public struct InventorySheet: View {
     private var sellableValue: Int {
         store.inventoryItems.reduce(0) { total, entry in
             switch entry.item.kind {
-            case .produce, .animalProduct, .supply:
+            case .produce, .animalProduct, .fish, .dish, .supply:
                 return total + store.sellPrice(for: entry.item.id) * entry.count
-            default:
+            case .seed, .furniture:
                 return total
             }
         }
@@ -223,7 +223,7 @@ public struct InventorySheet: View {
                 }
                 .buttonStyle(MiniActionStyle(tint: HHTheme.goldDeep))
             }
-        case .produce, .animalProduct:
+        case .produce, .animalProduct, .fish:
             VStack(alignment: .trailing, spacing: 3) {
                 Text("\(store.sellPrice(for: item.id))c")
                     .font(.system(size: 10.5, weight: .heavy, design: .rounded))
@@ -235,6 +235,28 @@ public struct InventorySheet: View {
                         .font(.hhHeadline(10.5))
                 }
                 .buttonStyle(MiniActionStyle(tint: HHTheme.goldDeep))
+            }
+        case .dish:
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("\(store.sellPrice(for: item.id))c")
+                    .font(.system(size: 10.5, weight: .heavy, design: .rounded))
+                    .foregroundStyle(HHTheme.goldDeep)
+                HStack(spacing: 4) {
+                    Button {
+                        store.eatDish(itemID: item.id)
+                    } label: {
+                        Text("Enjoy")
+                            .font(.hhHeadline(10.5))
+                    }
+                    .buttonStyle(MiniActionStyle(tint: HHTheme.forest))
+                    Button {
+                        store.sell(itemID: item.id, quantity: 1)
+                    } label: {
+                        Text("Sell")
+                            .font(.hhHeadline(10.5))
+                    }
+                    .buttonStyle(MiniActionStyle(tint: HHTheme.goldDeep))
+                }
             }
         }
     }
@@ -257,6 +279,8 @@ enum InventoryFilter: String, CaseIterable, Identifiable {
     case seeds
     case crops
     case goods
+    case fish
+    case dishes
     case supplies
     case decor
 
@@ -268,6 +292,8 @@ enum InventoryFilter: String, CaseIterable, Identifiable {
         case .seeds: return "Seeds"
         case .crops: return "Crops"
         case .goods: return "Barn goods"
+        case .fish: return "Fish"
+        case .dishes: return "Dishes"
         case .supplies: return "Supplies"
         case .decor: return "Decor"
         }
@@ -279,6 +305,8 @@ enum InventoryFilter: String, CaseIterable, Identifiable {
         case .seeds: return .seed
         case .crops: return .produce
         case .goods: return .animalProduct
+        case .fish: return .fish
+        case .dishes: return .dish
         case .supplies: return .supply
         case .decor: return .furniture
         }

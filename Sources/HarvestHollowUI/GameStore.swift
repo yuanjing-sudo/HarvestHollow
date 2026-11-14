@@ -290,7 +290,7 @@ public final class GameStore: ObservableObject {
                 )
                 playFeedback(strong: true)
 
-            case .cooked(let recipeID, let dishName, let buffKind, let percent):
+            case .cooked(_, let dishName, let buffKind, let percent):
                 enqueueToast(
                     title: "Cooked \(dishName)",
                     detail: "\(buffKind.title) +\(percent)% when eaten",

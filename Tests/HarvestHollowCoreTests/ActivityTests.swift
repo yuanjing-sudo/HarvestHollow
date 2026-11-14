@@ -342,6 +342,27 @@ final class ActivityTests: XCTestCase {
 
     // MARK: - Collections
 
+    func testCollectionProgressMatchesTheFiveBookPages() {
+        let (engine, _) = makeEngine { state in
+            state.stats.harvestedByCrop["wheat"] = 1
+            state.activities.fishing.catches = ["minnow": 1]
+            state.activities.cookedRecipeIDs = ["omelette": 1]
+            state.inventory["product.egg"] = 1
+            state.stats.soldByItem["dish.honeyToast"] = 1
+        }
+        let catalog = engine.catalog
+        let total = catalog.crops.count
+            + catalog.fish.count
+            + catalog.animals.count
+            + catalog.recipes.count * 2
+        let found = engine.discoveredCropCount
+            + engine.uniqueFishCaught
+            + engine.discoveredBarnGoodCount
+            + engine.discoveredDishCount
+            + engine.uniqueRecipesCooked
+        XCTAssertEqual(engine.collectionProgress, Double(found) / Double(total), accuracy: 0.0001)
+    }
+
     func testCollectionCountsComeFromActualActivity() {
         let (engine, _) = makeEngine { state in
             state.stats.harvestedByCrop["wheat"] = 2

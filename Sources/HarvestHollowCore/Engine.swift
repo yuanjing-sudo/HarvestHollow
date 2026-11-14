@@ -1521,7 +1521,11 @@ public final class GameEngine {
     }
 
     public var discoveredDishCount: Int {
-        catalog.recipes.filter { itemCount($0.dishItemID) > 0 || hasCooked(recipeID: $0.id) }.count
+        catalog.recipes.filter {
+            itemCount($0.dishItemID) > 0
+                || hasCooked(recipeID: $0.id)
+                || soldCount(itemID: $0.dishItemID) > 0
+        }.count
     }
 
     public var discoveredBarnGoodCount: Int {
@@ -1535,10 +1539,12 @@ public final class GameEngine {
             + catalog.fish.count
             + catalog.animals.count
             + catalog.recipes.count
+            + catalog.recipes.count
         guard total > 0 else { return 0 }
         let found = discoveredCropCount
             + uniqueFishCaught
             + discoveredBarnGoodCount
+            + discoveredDishCount
             + uniqueRecipesCooked
         return min(1, Double(found) / Double(total))
     }

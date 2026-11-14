@@ -159,7 +159,7 @@ HarvestHollow/
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 60 core simulation tests
+├── Tests/                     # 61 core simulation tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
 ├── Tools/                     # Reproducible icon + sprite-sheet generators
 └── docs/
@@ -220,7 +220,7 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 60 tests
+swift test                              # 61 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
 swift run harvesthollow validate        # check all 69 sprite grids
@@ -253,7 +253,7 @@ legacy-save migration, import/export and sprite integrity.
 
 ```bash
 swift test
-# Executed 60 tests, with 0 failures
+# Executed 61 tests, with 0 failures
 ```
 
 ## Regenerating art assets

@@ -19,6 +19,9 @@ Apps/HarvestHollow/HarvestHollow.xcodeproj/
 *.xcarchive
 build/
 
+# CI scratch
+.ci-shot/
+
 # Python helpers
 __pycache__/
 *.pyc

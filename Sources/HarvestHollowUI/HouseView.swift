@@ -75,6 +75,22 @@ public struct HouseView: View {
                     StatTile(title: "Sale bonus", value: "+\(store.comfortBonusPercent)%", icon: "tag.fill", tint: HHTheme.goldDeep)
                     StatTile(title: "Pieces", value: "\(store.placedFurniture.count)", icon: "sofa.fill", tint: HHTheme.forest)
                 }
+
+                HStack(spacing: 8) {
+                    Button {
+                        store.openTown(.kitchen)
+                    } label: {
+                        Label("Open the kitchen", systemImage: "fork.knife")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(CozySecondaryButtonStyle())
+
+                    if let buff = store.currentFoodBuff {
+                        TagChip(buff.name, icon: buff.kind.icon, tint: Color(hex: buff.kind.tintHex))
+                    } else {
+                        TagChip("Pantry quiet", icon: "cabinet.fill", tint: HHTheme.muted)
+                    }
+                }
             }
         }
     }

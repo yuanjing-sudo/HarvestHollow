@@ -6,6 +6,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
     case seed
     case produce
     case animalProduct
+    case fish
+    case dish
     case supply
     case furniture
 
@@ -14,6 +16,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .seed: return "Seeds"
         case .produce: return "Crops"
         case .animalProduct: return "Barn Goods"
+        case .fish: return "Pond Fish"
+        case .dish: return "Kitchen Dishes"
         case .supply: return "Supplies"
         case .furniture: return "Furniture"
         }
@@ -24,6 +28,8 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable {
         case .seed: return "leaf"
         case .produce: return "carrot"
         case .animalProduct: return "shippingbox"
+        case .fish: return "fish"
+        case .dish: return "fork.knife"
         case .supply: return "bag"
         case .furniture: return "sofa"
         }
@@ -185,6 +191,10 @@ public struct GameCatalog: Sendable {
     public let supplies: [SupplyDefinition]
     public let quests: [QuestDefinition]
     public let items: [String: ItemDefinition]
+    public let fish: [FishDefinition]
+    public let recipes: [RecipeDefinition]
+    public let achievements: [AchievementDefinition]
+    public let dailyGifts: [DailyGiftDefinition]
 
     public static let standard = GameCatalog()
 
@@ -396,7 +406,9 @@ public struct GameCatalog: Sendable {
             SupplyDefinition(id: "supply.feed", name: "Animal Feed", price: 15,
                              emoji: "🌿", detail: "One bag keeps an animal producing for two cycles."),
             SupplyDefinition(id: "supply.fertilizer", name: "Fertilizer", price: 40,
-                             emoji: "💩", detail: "Speeds a growing crop up by half and adds +1 yield.")
+                             emoji: "💩", detail: "Speeds a growing crop up by half and adds +1 yield."),
+            SupplyDefinition(id: "supply.bait", name: "Pond Bait", price: FishingBalance.baitPrice,
+                             emoji: "🪱", detail: "One cast at the Hollow pond. Fish seem to like it.")
         ]
 
         var items: [String: ItemDefinition] = [:]
@@ -428,6 +440,32 @@ public struct GameCatalog: Sendable {
                 id: piece.id, name: piece.name, kind: .furniture,
                 sellPrice: piece.price / 2, emoji: piece.emoji,
                 detail: piece.blurb, spriteKey: piece.spriteKey
+            )
+        }
+
+        let fish = ActivityCatalog.fish
+        for fishEntry in fish {
+            items[fishEntry.itemID] = ItemDefinition(
+                id: fishEntry.itemID,
+                name: fishEntry.name,
+                kind: .fish,
+                sellPrice: fishEntry.sellPrice,
+                emoji: fishEntry.emoji,
+                detail: fishEntry.blurb,
+                spriteKey: fishEntry.spriteKey
+            )
+        }
+
+        let recipes = ActivityCatalog.recipes
+        for recipe in recipes {
+            items[recipe.dishItemID] = ItemDefinition(
+                id: recipe.dishItemID,
+                name: recipe.name,
+                kind: .dish,
+                sellPrice: ActivityCatalog.dishPrice(for: recipe),
+                emoji: recipe.emoji,
+                detail: recipe.blurb,
+                spriteKey: recipe.spriteKey
             )
         }
 
@@ -514,6 +552,10 @@ public struct GameCatalog: Sendable {
         self.supplies = supplies
         self.quests = quests
         self.items = items
+        self.fish = fish
+        self.recipes = recipes
+        self.achievements = ActivityCatalog.achievements
+        self.dailyGifts = ActivityCatalog.dailyGifts
     }
 
     // MARK: Lookups
@@ -538,6 +580,26 @@ public struct GameCatalog: Sendable {
 
     public func quest(_ id: String) -> QuestDefinition? {
         quests.first { $0.id == id }
+    }
+
+    public func fishDefinition(_ id: String) -> FishDefinition? {
+        fish.first { $0.id == id }
+    }
+
+    public func fishForItem(_ itemID: String) -> FishDefinition? {
+        ActivityCatalog.fishDefinition(forItemID: itemID)
+    }
+
+    public func recipe(_ id: String) -> RecipeDefinition? {
+        recipes.first { $0.id == id }
+    }
+
+    public func recipeForDish(_ itemID: String) -> RecipeDefinition? {
+        recipes.first { $0.dishItemID == itemID }
+    }
+
+    public func achievement(_ id: String) -> AchievementDefinition? {
+        achievements.first { $0.id == id }
     }
 
     public var sellableItems: [ItemDefinition] {

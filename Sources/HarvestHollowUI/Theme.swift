@@ -110,14 +110,16 @@ public extension Font {
 
 public struct CozyCard<Content: View>: View {
     private let content: Content
+    private let padding: CGFloat
 
-    public init(@ViewBuilder content: () -> Content) {
+    public init(padding: CGFloat = 16, @ViewBuilder content: () -> Content) {
+        self.padding = padding
         self.content = content()
     }
 
     public var body: some View {
         content
-            .padding(16)
+            .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(HHTheme.paper.opacity(0.94))
@@ -134,11 +136,18 @@ public struct SectionHeader: View {
     let title: String
     let subtitle: String?
     let icon: String?
+    let accent: Color
 
-    public init(_ title: String, subtitle: String? = nil, icon: String? = nil) {
+    public init(
+        _ title: String,
+        subtitle: String? = nil,
+        icon: String? = nil,
+        accent: Color = HHTheme.terracotta
+    ) {
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
+        self.accent = accent
     }
 
     public var body: some View {
@@ -147,7 +156,7 @@ public struct SectionHeader: View {
                 if let icon {
                     Image(systemName: icon)
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(HHTheme.terracotta)
+                        .foregroundStyle(accent)
                 }
                 Text(title)
                     .font(.hhHeadline(19))

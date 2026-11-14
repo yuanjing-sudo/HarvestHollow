@@ -70,6 +70,19 @@ public struct MarketView: View {
                     TagChip("Comfort +\(store.comfortBonusPercent)%", icon: "sofa.fill", tint: HHTheme.rose)
                     Spacer(minLength: 0)
                 }
+
+                HStack(spacing: 7) {
+                    TownQuickLink(title: "Pond", icon: "fish.fill", tint: Color(hex: "4F6D8A")) {
+                        store.openTown(.fishing)
+                    }
+                    TownQuickLink(title: "Kitchen", icon: "fork.knife", tint: HHTheme.terracotta) {
+                        store.openTown(.kitchen)
+                    }
+                    TownQuickLink(title: "Almanac", icon: "calendar", tint: HHTheme.goldDeep) {
+                        store.openTown(.almanac)
+                    }
+                    Spacer(minLength: 0)
+                }
             }
         }
     }

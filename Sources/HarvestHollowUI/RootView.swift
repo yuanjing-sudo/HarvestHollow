@@ -95,6 +95,12 @@ public struct RootView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $store.showWeatherSheet) {
+            WeatherSheet()
+                .environmentObject(store)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .tint(HHTheme.forest)
         .onChange(of: scenePhase) { _, phase in
             if phase != .active {
@@ -114,6 +120,8 @@ public struct RootView: View {
             MarketView()
         case .house:
             HouseView()
+        case .town:
+            TownView()
         case .quests:
             QuestsView()
         }
@@ -174,9 +182,11 @@ public struct FarmHeaderView: View {
                         Text("Harvest Hollow")
                             .font(.hhTitle(23))
                             .foregroundStyle(headerText)
-                        Text("Day \(state.day) · \(clockText)")
-                            .font(.hhCaption(11.5))
+                        Text("Day \(state.day) · \(state.season.title) \(state.seasonDay) · \(clockText)")
+                            .font(.hhCaption(11))
                             .foregroundStyle(headerText.opacity(0.72))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
 
                     Spacer(minLength: 4)
@@ -217,16 +227,29 @@ public struct FarmHeaderView: View {
 
                     Spacer(minLength: 4)
 
-                    HStack(spacing: 5) {
-                        Text(state.weather.emoji)
-                            .font(.system(size: 15))
-                        Text(state.weather.title)
-                            .font(.hhHeadline(12.5))
-                            .foregroundStyle(HHTheme.ink)
+                    Button {
+                        store.showWeatherSheet = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(state.weather.emoji)
+                                .font(.system(size: 15))
+                            Text(state.weather.title)
+                                .font(.hhHeadline(12.5))
+                                .foregroundStyle(HHTheme.ink)
+                            HStack(spacing: 1) {
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 7, weight: .bold))
+                                Text(state.nextWeather.emoji)
+                                    .font(.system(size: 9))
+                            }
+                            .foregroundStyle(HHTheme.muted)
+                        }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(HHTheme.paper.opacity(0.82)))
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(HHTheme.paper.opacity(0.82)))
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Weather: \(state.weather.title). Tomorrow: \(state.nextWeather.title).")
 
                     CoinPill(state.coins, compact: true)
                 }
@@ -257,32 +280,51 @@ public struct FarmHeaderView: View {
 
 public struct CozyTabBar: View {
     @Binding public var selection: AppTab
+    @EnvironmentObject private var store: GameStore
 
     public init(selection: Binding<AppTab>) {
         _selection = selection
     }
 
+    private func badgeCount(for tab: AppTab) -> Int {
+        guard tab == .town else { return 0 }
+        return (store.canClaimDailyGift ? 1 : 0) + (store.claimableAchievementCount > 0 ? 1 : 0)
+    }
+
     public var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 1) {
             ForEach(AppTab.allCases) { tab in
                 Button {
+                    if tab == .town, selection == .town {
+                        store.closeTownToRoot()
+                    }
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         selection = tab
                     }
                 } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(height: 20)
-                        Text(tab.title)
-                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                    VStack(spacing: 2) {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 15, weight: .bold))
+                                .frame(width: 22, height: 19)
+                            if badgeCount(for: tab) > 0 {
+                                Circle()
+                                    .fill(HHTheme.terracotta)
+                                    .frame(width: 6, height: 6)
+                                    .offset(x: 3, y: -1)
+                            }
+                        }
+                        Text(tab.shortTitle)
+                            .font(.system(size: 8.6, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .foregroundStyle(selection == tab ? .white : HHTheme.muted)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 7)
+                    .padding(.vertical, 6)
                     .background {
                         if selection == tab {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 13, style: .continuous)
                                 .fill(HHTheme.forest)
                                 .shadow(color: HHTheme.forest.opacity(0.24), radius: 4, y: 2)
                         }
@@ -293,9 +335,9 @@ public struct CozyTabBar: View {
                 .accessibilityAddTraits(selection == tab ? [.isSelected] : [])
             }
         }
-        .padding(.horizontal, 9)
-        .padding(.top, 7)
-        .padding(.bottom, 6)
+        .padding(.horizontal, 7)
+        .padding(.top, 6)
+        .padding(.bottom, 5)
         .background(
             HHTheme.paper.opacity(0.96)
                 .overlay(alignment: .top) {

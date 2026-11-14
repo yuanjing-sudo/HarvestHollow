@@ -7,9 +7,11 @@
 
 Harvest Hollow is a complete, playable farming loop: till the field, plant and water
 crops, raise pixel-art animals, sell at a living market, decorate the farmhouse, follow
-a ten-chapter story, and level up a little valley farm. Every visual is drawn with
-SwiftUI `Canvas` from data-driven coloured squares — no PNG sprite atlases, no web
-views, and no JavaScript.
+a ten-chapter story, and level up a little valley farm. The town expansion adds a
+fishing pond, a cottage kitchen, an achievement journal, a seasonal almanac, a
+collection book, daily gifts, crop mastery, animal affection, a weather forecast, and
+full backward-compatible saves. Every visual is drawn with SwiftUI `Canvas` from
+data-driven coloured squares — no PNG sprite atlases, no web views, and no JavaScript.
 
 <p align="center">
   <img src="docs/icon.png" width="132" alt="Harvest Hollow app icon: a pixel-art red barn, sun, field and pig" />
@@ -39,14 +41,39 @@ views, and no JavaScript.
 | **Inventory** | Filterable satchel with seeds, crops, barn goods, supplies and furniture; quick plant, feed and sell actions |
 | **House** | 14 furniture pieces, drag/arrow placement on a 12×8 room grid, 5 themes, comfort score and up to +25% market bonus |
 | **Quests** | 10-chapter story with automatic objective tracking and rewards, plus a daily order |
+| **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
+| **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs |
+| **Cooking** | 18 recipes, 5 categories, ingredient checking, a pantry, sellable dishes and timed growth/market/fishing buffs |
+| **Achievements** | 30 long-term goals across fields, barn, market, pond, home and story, with individual and claim-all rewards |
+| **Almanac** | Season calendar, festivals, tomorrow's forecast, seven-day weather history, crop mastery and a daily market board |
+| **Collection** | Five fillable pages for crops, fish, barn goods, dishes and recipes, with detail sheets and completion progress |
+| **Daily gifts** | A seven-day reward cycle, streaks, coins, XP and useful items, with a claimable reminder in the tab bar |
+| **Mastery & affection** | Per-crop harvest ranks with sale bonuses; petting, affection levels and faster animal production |
 | **Progression** | XP, levels, coin bonuses, crop/animal/plot/pen unlocks, farm records and a trophy |
-| **Persistence** | Autosave every 20 seconds, atomic JSON saves with a backup, offline catch-up (capped at 8 hours), export/import save codes |
+| **Persistence** | Autosave every 20 seconds, atomic JSON saves with a backup, offline catch-up (capped at 8 hours), export/import save codes, version-tolerant migration from older farms |
 
 ### The crops
 
 Wheat, carrot, tomato, strawberry, sunflower, corn, lavender, pumpkin and moonberry.
 Each crop has its own growth time, yield, seed cost, sale price, unlock level and
 10×10 pixel sprite.
+
+### The pond
+
+The Hollow pond holds thirteen fish across five rarities: common, uncommon, rare,
+epic and legendary. Each cast costs one pond bait and rolls against the fish's unlock
+rod level, preferred weather, time-of-day window and the current fishing buff. The
+rod has five levels; better rods unlock rarer residents and improve the odds. The
+journal keeps catch counts and best weights, and the kitchen turns some catches into
+meals.
+
+### The kitchen
+
+Eighteen recipes span breakfast, lunch, dinner, dessert and drinks. Recipes unlock
+with farmer levels, consume real ingredients from the satchel, and produce dishes that
+can be sold or eaten. Eating applies a timed buff: faster crop growth, better market
+prices, or improved rare-fish odds. The largest feast needs a legendary sturgeon and
+the best the valley grows.
 
 ### The barn friends
 
@@ -80,6 +107,14 @@ animal is a hand-authored grid of coloured cells, not an emoji or an image file.
   the shelf, and tap the room. Drag a placed piece or use the arrow controls to nudge it.
 - **Progress:** quests complete automatically. Level-ups unlock new crops, animals,
   plots and pens.
+- **Fish:** open **Town → Hollow Pond**, buy bait at the market, and cast. Check the
+  journal for which fish prefer rain, dawn, dusk or night.
+- **Cook:** open **Town → Cottage Kitchen**, pick a recipe whose ingredients you own,
+  cook it, then eat from the pantry for a timed buff.
+- **Claim:** the Town tab shows a dot when a daily gift or achievement reward is
+  ready. The gift cycles through seven days and builds a streak.
+- **Read the sky:** tap the weather chip in the header or open the Almanac. Tomorrow's
+  weather is always shown before it arrives.
 
 The in-game day lasts four real minutes. A long break rolls days forward and catches
 up crops and animal production for up to eight hours.
@@ -95,25 +130,36 @@ HarvestHollow/
 ├── Sources/
 │   ├── HarvestHollowCore/     # Pure Swift simulation, no UI imports
 │   │   ├── Models.swift       # GameState, weather, plots, crops, animals, quests
+│   │   ├── Activities.swift   # Seasons, fish, recipes, buffs, mastery, achievements
+│   │   ├── ActivityCatalog.swift # Fish, recipe, achievement and daily-gift content
 │   │   ├── Catalog.swift      # Crops, animals, furniture, themes, quests, items
 │   │   ├── Engine.swift       # Tick loop, actions, validation, events, progression
 │   │   ├── Market.swift       # Deterministic daily price multipliers
 │   │   ├── Persistence.swift  # JSON save codec, atomic store, export/import
-│   │   └── PixelArt.swift     # 38 data-driven pixel sprites
+│   │   └── PixelArt.swift     # 69 data-driven pixel sprites
 │   ├── HarvestHollowUI/       # SwiftUI screens and reusable components
 │   │   ├── FarmView.swift
 │   │   ├── BarnView.swift
 │   │   ├── MarketView.swift
 │   │   ├── HouseView.swift
 │   │   ├── QuestsView.swift
+│   │   ├── TownView.swift
+│   │   ├── FishingView.swift
+│   │   ├── KitchenView.swift
+│   │   ├── AchievementsView.swift
+│   │   ├── AlmanacView.swift
+│   │   ├── CollectionView.swift
+│   │   ├── HelpView.swift
+│   │   ├── WeatherSheet.swift
 │   │   ├── InventorySheet.swift
 │   │   ├── SettingsSheet.swift
 │   │   ├── RootView.swift
 │   │   ├── GameStore.swift
+│   │   ├── TownComponents.swift
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 32 core simulation tests
+├── Tests/                     # 60 core simulation tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
 ├── Tools/                     # Reproducible icon + sprite-sheet generators
 └── docs/
@@ -144,7 +190,7 @@ PixelSprite(
 `PixelSpriteView` renders every non-`.` cell as its own square on a SwiftUI `Canvas`,
 scaled with integer-friendly nearest-neighbour geometry. Tests assert every row is the
 declared width and every character has a palette colour. The CLI's `validate` command
-checks all 38 sprites, and the sprite sheet above is generated straight from
+checks all 69 sprites, and the sprite sheet above is generated straight from
 `PixelArt.swift`.
 
 ## Run it
@@ -174,10 +220,10 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 32 tests
+swift test                              # 60 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
-swift run harvesthollow validate        # check all 38 sprite grids
+swift run harvesthollow validate        # check all 69 sprite grids
 ```
 
 The CLI uses ANSI colours in a terminal. On Linux, `HarvestHollowUI` compiles as an
@@ -192,17 +238,22 @@ build and test normally.
 - On launch the game simulates offline time, capped at 8 hours, so crops can finish
   and animals can produce while the app is closed.
 - **Settings → Export code / Import** moves a base64 JSON save between devices.
+- Saves are versioned. Farms created before the town expansion load with sensible
+  defaults for forecast, activities, fishing, cooking, achievements, affection and
+  gift state; the decoder fills missing fields instead of rejecting the save.
 
 ## Testing
 
 The test suite covers planting, growth, weather, harvesting, animal feeding and
-production, inventory, buying/selling, market multipliers, plot/pen unlocks, furniture
-placement, themes, quests, level-ups, offline catch-up, save round-trips, import/export
-and sprite integrity.
+production, petting and affection, inventory, buying/selling, market multipliers,
+plot/pen unlocks, furniture placement, themes, quests, level-ups, offline catch-up,
+fishing and bait, rod upgrades, cooking and buffs, daily gifts and streaks,
+achievements, crop mastery, weather forecasting, collection counts, save round-trips,
+legacy-save migration, import/export and sprite integrity.
 
 ```bash
 swift test
-# Executed 32 tests, with 0 failures
+# Executed 60 tests, with 0 failures
 ```
 
 ## Regenerating art assets

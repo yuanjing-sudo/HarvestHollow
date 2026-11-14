@@ -7,7 +7,7 @@ public enum GameConstants {
     public static let dayLength: Double = 240
     /// Progress is simulated for at most eight hours while the game is closed.
     public static let maxOfflineSeconds: Double = 8 * 60 * 60
-    public static let saveVersion = 1
+    public static let saveVersion = 2
 
     public static let farmPlotCount = 24
     public static let startingPlots = 6
@@ -85,6 +85,7 @@ public struct GameState: Codable, Sendable {
     public var day: Int
     public var clock: Double
     public var weather: Weather
+    public var nextWeather: Weather
 
     public var plots: [Plot]
     public var pens: [Pen]
@@ -97,6 +98,7 @@ public struct GameState: Codable, Sendable {
     public var rngState: UInt64
     public var settings: GameSettings
     public var flags: GameFlags
+    public var activities: ActivityState
 
     public static func newGame(
         now: Date = Date(),
@@ -114,6 +116,7 @@ public struct GameState: Codable, Sendable {
             day: 1,
             clock: GameConstants.dayLength * 0.28,
             weather: .sunny,
+            nextWeather: .sunny,
             plots: (0..<GameConstants.farmPlotCount).map {
                 Plot(id: $0, unlocked: $0 < GameConstants.startingPlots, crop: nil)
             },
@@ -126,6 +129,7 @@ public struct GameState: Codable, Sendable {
                 "seed.carrot": 3,
                 "supply.feed": 2,
                 "supply.fertilizer": 1,
+                "supply.bait": 6,
                 "furniture.chair": 1,
                 "furniture.plant": 1
             ],
@@ -135,10 +139,13 @@ public struct GameState: Codable, Sendable {
             themesOwned: ["cozy"],
             rngState: rng.state,
             settings: GameSettings(),
-            flags: GameFlags()
+            flags: GameFlags(),
+            activities: ActivityState()
         )
 
         state.weather = Weather.roll(using: &rng)
+        state.nextWeather = Weather.roll(using: &rng)
+        state.activities.weatherHistory = [state.weather]
         state.dailyOrder = DailyOrder.generate(
             day: state.day,
             playerLevel: state.level,
@@ -161,6 +168,106 @@ public struct GameState: Codable, Sendable {
     /// Fraction of the current in-game day that has elapsed (0...1).
     public var timeOfDay: Double {
         min(1, max(0, clock / GameConstants.dayLength))
+    }
+
+    public var season: FarmSeason {
+        GameCalendar.season(forDay: day)
+    }
+
+    public var seasonDay: Int {
+        GameCalendar.dayOfSeason(forDay: day)
+    }
+
+    public var festival: FarmFestival? {
+        GameCalendar.festival(forDay: day)
+    }
+}
+
+extension GameState {
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case createdAt
+        case lastSavedAt
+        case lastTick
+        case coins
+        case level
+        case xp
+        case day
+        case clock
+        case weather
+        case nextWeather
+        case plots
+        case pens
+        case house
+        case inventory
+        case stats
+        case quests
+        case dailyOrder
+        case themesOwned
+        case rngState
+        case settings
+        case flags
+        case activities
+    }
+
+    /// Version-tolerant decoding lets farms saved before the town expansion keep
+    /// loading. New fields are filled with gentle defaults.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        lastSavedAt = try container.decode(Date.self, forKey: .lastSavedAt)
+        lastTick = try container.decode(Date.self, forKey: .lastTick)
+        coins = try container.decode(Int.self, forKey: .coins)
+        level = try container.decode(Int.self, forKey: .level)
+        xp = try container.decode(Int.self, forKey: .xp)
+        day = try container.decode(Int.self, forKey: .day)
+        clock = try container.decode(Double.self, forKey: .clock)
+        weather = try container.decodeIfPresent(Weather.self, forKey: .weather) ?? .sunny
+        nextWeather = try container.decodeIfPresent(Weather.self, forKey: .nextWeather) ?? weather
+        plots = try container.decodeIfPresent([Plot].self, forKey: .plots) ?? []
+        pens = try container.decodeIfPresent([Pen].self, forKey: .pens) ?? []
+        house = try container.decodeIfPresent(HouseState.self, forKey: .house)
+            ?? HouseState(themeID: "cozy", placed: [])
+        inventory = try container.decodeIfPresent([String: Int].self, forKey: .inventory) ?? [:]
+        stats = try container.decodeIfPresent(PlayerStats.self, forKey: .stats) ?? PlayerStats()
+        quests = try container.decodeIfPresent(QuestState.self, forKey: .quests) ?? QuestState()
+        dailyOrder = try container.decodeIfPresent(DailyOrder.self, forKey: .dailyOrder)
+        themesOwned = try container.decodeIfPresent([String].self, forKey: .themesOwned) ?? ["cozy"]
+        rngState = try container.decodeIfPresent(UInt64.self, forKey: .rngState)
+            ?? UInt64(0x9E3779B97F4A7C15)
+        settings = try container.decodeIfPresent(GameSettings.self, forKey: .settings) ?? GameSettings()
+        flags = try container.decodeIfPresent(GameFlags.self, forKey: .flags) ?? GameFlags()
+        activities = try container.decodeIfPresent(ActivityState.self, forKey: .activities)
+            ?? ActivityState(weather: weather)
+        version = GameConstants.saveVersion
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(lastSavedAt, forKey: .lastSavedAt)
+        try container.encode(lastTick, forKey: .lastTick)
+        try container.encode(coins, forKey: .coins)
+        try container.encode(level, forKey: .level)
+        try container.encode(xp, forKey: .xp)
+        try container.encode(day, forKey: .day)
+        try container.encode(clock, forKey: .clock)
+        try container.encode(weather, forKey: .weather)
+        try container.encode(nextWeather, forKey: .nextWeather)
+        try container.encode(plots, forKey: .plots)
+        try container.encode(pens, forKey: .pens)
+        try container.encode(house, forKey: .house)
+        try container.encode(inventory, forKey: .inventory)
+        try container.encode(stats, forKey: .stats)
+        try container.encode(quests, forKey: .quests)
+        try container.encodeIfPresent(dailyOrder, forKey: .dailyOrder)
+        try container.encode(themesOwned, forKey: .themesOwned)
+        try container.encode(rngState, forKey: .rngState)
+        try container.encode(settings, forKey: .settings)
+        try container.encode(flags, forKey: .flags)
+        try container.encode(activities, forKey: .activities)
     }
 }
 
@@ -239,6 +346,88 @@ public struct AnimalInstance: Codable, Identifiable, Sendable {
     public var stored: Int
     public var happiness: Double
     public var acquiredAt: Date
+    public var affection: Double
+    public var lastPettedAt: Date?
+    public var petCount: Int
+
+    public init(
+        id: UUID,
+        speciesID: String,
+        name: String,
+        fedUntil: Date?,
+        progress: Double,
+        stored: Int,
+        happiness: Double,
+        acquiredAt: Date,
+        affection: Double = 45,
+        lastPettedAt: Date? = nil,
+        petCount: Int = 0
+    ) {
+        self.id = id
+        self.speciesID = speciesID
+        self.name = name
+        self.fedUntil = fedUntil
+        self.progress = progress
+        self.stored = stored
+        self.happiness = happiness
+        self.acquiredAt = acquiredAt
+        self.affection = affection
+        self.lastPettedAt = lastPettedAt
+        self.petCount = petCount
+    }
+
+    public var affectionLevel: Int {
+        min(5, max(1, Int(affection / 20) + 1))
+    }
+
+    public var affectionTitle: String {
+        switch affectionLevel {
+        case 1: return "Shy"
+        case 2: return "Curious"
+        case 3: return "Friendly"
+        case 4: return "Affectionate"
+        default: return "Best Friend"
+        }
+    }
+
+    public func canPet(at date: Date) -> Bool {
+        guard let lastPettedAt else { return true }
+        return date.timeIntervalSince(lastPettedAt) >= 90
+    }
+
+    public func petCooldownRemaining(at date: Date) -> Double {
+        guard let lastPettedAt else { return 0 }
+        return max(0, 90 - date.timeIntervalSince(lastPettedAt))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case speciesID
+        case name
+        case fedUntil
+        case progress
+        case stored
+        case happiness
+        case acquiredAt
+        case affection
+        case lastPettedAt
+        case petCount
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        speciesID = try container.decode(String.self, forKey: .speciesID)
+        name = try container.decode(String.self, forKey: .name)
+        fedUntil = try container.decodeIfPresent(Date.self, forKey: .fedUntil)
+        progress = try container.decodeIfPresent(Double.self, forKey: .progress) ?? 0
+        stored = try container.decodeIfPresent(Int.self, forKey: .stored) ?? 0
+        happiness = try container.decodeIfPresent(Double.self, forKey: .happiness) ?? 70
+        acquiredAt = try container.decode(Date.self, forKey: .acquiredAt)
+        affection = try container.decodeIfPresent(Double.self, forKey: .affection) ?? 45
+        lastPettedAt = try container.decodeIfPresent(Date.self, forKey: .lastPettedAt)
+        petCount = try container.decodeIfPresent(Int.self, forKey: .petCount) ?? 0
+    }
 
     public func isFed(at date: Date) -> Bool {
         guard let fedUntil else { return false }
@@ -367,6 +556,14 @@ public enum GameEvent: Equatable, Sendable {
     case leveledUp(level: Int, coinBonus: Int)
     case questCompleted(questID: String, title: String, coins: Int, xp: Int)
     case dailyOrderCompleted(itemID: String, coins: Int, xp: Int)
+    case fishCaught(fishID: String, weight: Double, rarity: FishRarity)
+    case rodUpgraded(level: Int)
+    case achievementClaimed(id: String, title: String, coins: Int, xp: Int)
+    case giftClaimed(day: Int, streak: Int, coins: Int, xp: Int)
+    case cooked(recipeID: String, dishName: String, buffKind: FoodBuffKind, percent: Int)
+    case mealEnjoyed(dishID: String, buffName: String, percent: Int, seconds: Int)
+    case petAnimal(name: String, affection: Double)
+    case masteryUp(cropID: String, level: Int)
     case message(String)
 }
 

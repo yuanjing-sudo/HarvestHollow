@@ -18,6 +18,7 @@ public struct SettingsSheet: View {
     @State private var showExport = false
     @State private var showImport = false
     @State private var exportCode = ""
+    @State private var showHelp = false
 
     public init() {}
 
@@ -56,6 +57,14 @@ public struct SettingsSheet: View {
                 .environmentObject(store)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showHelp) {
+            NavigationStack {
+                HelpView()
+                    .environmentObject(store)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -228,7 +237,7 @@ public struct SettingsSheet: View {
                         Text("Harvest Hollow")
                             .font(.hhHeadline(14))
                             .foregroundStyle(HHTheme.ink)
-                        Text("Version 1.0 · built entirely with SwiftUI")
+                        Text("Version 2.0 · town expansion · built entirely with SwiftUI")
                             .font(.hhCaption(10.5))
                             .foregroundStyle(HHTheme.muted)
                     }
@@ -245,6 +254,14 @@ public struct SettingsSheet: View {
                     TagChip("\(state.stats.questsCompleted) quests", icon: "checkmark.seal.fill", tint: HHTheme.forest)
                     TagChip("\(state.flags.totalDaysPlayed) days", icon: "sun.max.fill", tint: HHTheme.terracotta)
                 }
+
+                Button {
+                    showHelp = true
+                } label: {
+                    Label("How to play & town guide", systemImage: "questionmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CozySecondaryButtonStyle())
             }
         }
     }

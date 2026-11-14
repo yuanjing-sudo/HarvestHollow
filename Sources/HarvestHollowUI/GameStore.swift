@@ -17,6 +17,7 @@ public enum AppTab: String, CaseIterable, Identifiable {
     case barn
     case market
     case house
+    case town
     case quests
 
     public var id: String { rawValue }
@@ -27,6 +28,7 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .barn: return "Barn"
         case .market: return "Market"
         case .house: return "House"
+        case .town: return "Town"
         case .quests: return "Quests"
         }
     }
@@ -37,7 +39,52 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .barn: return "pawprint.fill"
         case .market: return "cart.fill"
         case .house: return "sofa.fill"
+        case .town: return "building.columns.fill"
         case .quests: return "checklist"
+        }
+    }
+
+    public var shortTitle: String {
+        switch self {
+        case .market: return "Shop"
+        case .quests: return "Quests"
+        case .town: return "Town"
+        default: return title
+        }
+    }
+}
+
+// MARK: - Town routes
+
+public enum TownRoute: String, Hashable, CaseIterable, Identifiable {
+    case fishing
+    case kitchen
+    case achievements
+    case almanac
+    case collection
+    case help
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .fishing: return "Hollow Pond"
+        case .kitchen: return "Cottage Kitchen"
+        case .achievements: return "Achievement Journal"
+        case .almanac: return "Valley Almanac"
+        case .collection: return "Collection Book"
+        case .help: return "How to Play"
+        }
+    }
+
+    public var icon: String {
+        switch self {
+        case .fishing: return "fish.fill"
+        case .kitchen: return "fork.knife"
+        case .achievements: return "rosette"
+        case .almanac: return "calendar"
+        case .collection: return "books.vertical.fill"
+        case .help: return "questionmark.circle.fill"
         }
     }
 }
@@ -92,6 +139,8 @@ public final class GameStore: ObservableObject {
     @Published public var showWelcome: Bool = false
     @Published public var showInventory: Bool = false
     @Published public var showSettings: Bool = false
+    @Published public var showWeatherSheet: Bool = false
+    @Published public var townPath: [TownRoute] = []
     @Published public var offlineNotice: String?
     @Published public var saveStatus: SaveStatus = .saved
 
@@ -197,6 +246,80 @@ public final class GameStore: ObservableObject {
                     detail: "+\(coins) coins · +\(xp) XP",
                     icon: "shippingbox.fill",
                     tint: HHTheme.terracotta
+                )
+
+            case .fishCaught(let fishID, let weight, let rarity):
+                let name = catalog.fishDefinition(fishID)?.name ?? "fish"
+                enqueueToast(
+                    title: "\(rarity.stars) \(name)",
+                    detail: String(format: "%.1f lb · +%d XP", weight, rarity.xp),
+                    icon: "fish.fill",
+                    tint: HHTheme.sky
+                )
+                playFeedback()
+
+            case .rodUpgraded(let level):
+                enqueueToast(
+                    title: "Rod upgraded",
+                    detail: "Level \(level) · \(engine.fishingRodName)",
+                    icon: "wrench.and.screwdriver.fill",
+                    tint: HHTheme.goldDeep
+                )
+                playFeedback(strong: true)
+
+            case .achievementClaimed(_, let title, let coins, let xp):
+                enqueueToast(
+                    title: "Achievement · \(title)",
+                    detail: "+\(coins) coins · +\(xp) XP",
+                    icon: "rosette",
+                    tint: HHTheme.lavender
+                )
+                playFeedback(strong: true)
+
+            case .giftClaimed(let day, let streak, let coins, let xp):
+                enqueueToast(
+                    title: "Daily gift · Day \(day)",
+                    detail: "+\(coins) coins · +\(xp) XP · \(streak)-day streak",
+                    icon: "gift.fill",
+                    tint: HHTheme.rose
+                )
+                playFeedback(strong: true)
+
+            case .cooked(let recipeID, let dishName, let buffKind, let percent):
+                enqueueToast(
+                    title: "Cooked \(dishName)",
+                    detail: "\(buffKind.title) +\(percent)% when eaten",
+                    icon: "fork.knife",
+                    tint: HHTheme.terracotta
+                )
+                playFeedback()
+
+            case .mealEnjoyed(_, let dishName, let percent, let seconds):
+                let minutes = max(1, seconds / 60)
+                enqueueToast(
+                    title: "Enjoyed \(dishName)"
+                    , detail: "Buff +\(percent)% · \(minutes)m",
+                    icon: "sparkles",
+                    tint: HHTheme.goldDeep
+                )
+                playFeedback(strong: true)
+
+            case .petAnimal(let name, let affection):
+                enqueueToast(
+                    title: "\(name) is delighted",
+                    detail: "Affection \(Int(affection))%",
+                    icon: "heart.fill",
+                    tint: HHTheme.rose
+                )
+                playFeedback()
+
+            case .masteryUp(let cropID, let level):
+                let name = catalog.crop(cropID)?.name ?? "Crop"
+                enqueueToast(
+                    title: "\(name) mastery \(level)",
+                    detail: "A little more value at market",
+                    icon: "star.fill",
+                    tint: HHTheme.goldDeep
                 )
 
             case .dayAdvanced(let day, let weather):
@@ -417,7 +540,12 @@ public final class GameStore: ObservableObject {
 
     public var sellableInventory: [(item: ItemDefinition, count: Int)] {
         inventoryItems.filter {
-            $0.item.kind == .produce || $0.item.kind == .animalProduct || $0.item.kind == .supply
+            switch $0.item.kind {
+            case .produce, .animalProduct, .fish, .dish, .supply:
+                return true
+            case .seed, .furniture:
+                return false
+            }
         }
     }
 
@@ -451,6 +579,113 @@ public final class GameStore: ObservableObject {
 
     public func penPrice() -> Int {
         engine.penPrice()
+    }
+
+    // MARK: Town helpers
+
+    public var season: FarmSeason { state.season }
+    public var seasonDay: Int { state.seasonDay }
+    public var festival: FarmFestival? { state.festival }
+    public var nextWeather: Weather { state.nextWeather }
+    public var weatherHistory: [Weather] { engine.weatherHistory }
+    public var fishingRodName: String { engine.fishingRodName }
+    public var fishingRodLevel: Int { engine.fishingRodLevel }
+    public var fishingUpgradeCost: Int { engine.fishingRodUpgradeCost }
+    public var fishingUpgradeLevel: Int { engine.fishingRodUpgradeLevel }
+    public var canUpgradeFishingRod: Bool { engine.canUpgradeFishingRod }
+    public var baitCount: Int { engine.baitCount }
+    public var fishCaughtCount: Int { engine.fishCaughtCount }
+    public var uniqueFishCaught: Int { engine.uniqueFishCaught }
+    public var currentFoodBuff: FoodBuff? { engine.currentFoodBuff }
+    public var foodBuffSecondsRemaining: Int { engine.foodBuffSecondsRemaining }
+    public var dishesCookedCount: Int { engine.dishesCookedCount }
+    public var uniqueRecipesCooked: Int { engine.uniqueRecipesCooked }
+    public var dailyGift: DailyGiftDefinition { engine.nextDailyGift }
+    public var canClaimDailyGift: Bool { engine.canClaimDailyGift }
+    public var dailyGiftStreak: Int { engine.dailyGiftStreak }
+    public var dailyGiftCycleDay: Int { engine.dailyGiftCycleDay }
+    public var achievementProgressList: [AchievementProgress] { engine.achievementProgressList }
+    public var claimableAchievementCount: Int { engine.claimableAchievementCount }
+    public var claimedAchievementCount: Int { engine.claimedAchievementCount }
+    public var collectionProgress: Double { engine.collectionProgress }
+    public var discoveredCropCount: Int { engine.discoveredCropCount }
+    public var discoveredDishCount: Int { engine.discoveredDishCount }
+    public var discoveredBarnGoodCount: Int { engine.discoveredBarnGoodCount }
+
+    public func fishCatchCount(_ fishID: String) -> Int {
+        engine.fishCatchCount(fishID)
+    }
+
+    public func bestWeight(forFish fishID: String) -> Double {
+        engine.bestWeight(forFish: fishID)
+    }
+
+    public func isFishCaught(_ fishID: String) -> Bool {
+        engine.isFishCaught(fishID)
+    }
+
+    public func cookedCount(recipeID: String) -> Int {
+        engine.cookedCount(recipeID: recipeID)
+    }
+
+    public func hasCooked(recipeID: String) -> Bool {
+        engine.hasCooked(recipeID: recipeID)
+    }
+
+    public func canCook(_ recipe: RecipeDefinition) -> Bool {
+        engine.canCook(recipe)
+    }
+
+    public func missingIngredients(for recipe: RecipeDefinition) -> [(itemID: String, quantity: Int)] {
+        engine.missingIngredients(for: recipe)
+    }
+
+    public func cropMasteryLevel(_ cropID: String) -> Int {
+        engine.cropMasteryLevel(cropID)
+    }
+
+    public func cropMasteryTier(_ cropID: String) -> CropMasteryTier {
+        engine.cropMasteryTier(cropID)
+    }
+
+    public func cropMasteryProgress(_ cropID: String) -> Double {
+        engine.cropMasteryProgress(cropID)
+    }
+
+    public func cropHarvestCount(_ cropID: String) -> Int {
+        engine.cropHarvestCount(cropID)
+    }
+
+    public func isCropDiscovered(_ cropID: String) -> Bool {
+        engine.isCropDiscovered(cropID)
+    }
+
+    public func soldCount(itemID: String) -> Int {
+        engine.soldCount(itemID: itemID)
+    }
+
+    public func isItemDiscovered(_ itemID: String) -> Bool {
+        engine.isItemDiscovered(itemID)
+    }
+
+    public func achievementProgress(_ id: String) -> AchievementProgress? {
+        guard let definition = catalog.achievement(id) else { return nil }
+        return engine.progress(forAchievement: definition)
+    }
+
+    public func openTown(_ route: TownRoute? = nil) {
+        if let route {
+            townPath = [route]
+        } else {
+            townPath = []
+        }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+            selectedTab = .town
+        }
+    }
+
+    public func closeTownToRoot() {
+        townPath = []
     }
 
     // MARK: Farm actions
@@ -540,6 +775,48 @@ public final class GameStore: ObservableObject {
         perform(engine.buyPen(penID), announceSuccess: true)
     }
 
+    public func pet(penID: Int) {
+        perform(engine.pet(penID: penID), announceSuccess: true)
+    }
+
+    public func petAll() {
+        perform(engine.petAll(), announceSuccess: true)
+    }
+
+    // MARK: Town actions
+
+    public func castLine() {
+        perform(engine.castLine(), announceSuccess: true)
+    }
+
+    public func upgradeFishingRod() {
+        perform(engine.upgradeFishingRod(), announceSuccess: true)
+    }
+
+    public func cook(recipeID: String) {
+        perform(engine.cook(recipeID: recipeID), announceSuccess: true)
+    }
+
+    public func cookAllPossible() {
+        perform(engine.cookAllPossible(), announceSuccess: true)
+    }
+
+    public func eatDish(itemID: String) {
+        perform(engine.eatDish(itemID: itemID), announceSuccess: true)
+    }
+
+    public func claimDailyGift() {
+        perform(engine.claimDailyGift(), announceSuccess: true)
+    }
+
+    public func claimAchievement(id: String) {
+        perform(engine.claimAchievement(id: id), announceSuccess: true)
+    }
+
+    public func claimAllAchievements() {
+        perform(engine.claimAllAchievements(), announceSuccess: true)
+    }
+
     // MARK: Market actions
 
     public func buySeed(cropID: String, quantity: Int = 1) {
@@ -599,6 +876,7 @@ public final class GameStore: ObservableObject {
         selectedSeedCropID = nil
         selectedPlotID = nil
         adoptPenID = nil
+        townPath = []
         offlineNotice = nil
         showWelcome = false
         activeLevelUp = nil
@@ -640,6 +918,7 @@ public final class GameStore: ObservableObject {
         selectedSeedCropID = nil
         selectedPlotID = nil
         adoptPenID = nil
+        townPath = []
         offlineNotice = nil
         showWelcome = true
         withAnimation {

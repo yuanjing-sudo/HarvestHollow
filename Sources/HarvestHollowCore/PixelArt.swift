@@ -57,7 +57,7 @@ public struct PixelSprite: Sendable {
 
 public enum SpriteLibrary {
     public static let all: [String: PixelSprite] = {
-        let sprites: [PixelSprite] = animals + crops + furniture + items
+        let sprites: [PixelSprite] = animals + crops + furniture + items + fish + dishes
         return Dictionary(uniqueKeysWithValues: sprites.map { ($0.key, $0) })
     }()
 
@@ -74,6 +74,14 @@ public enum SpriteLibrary {
     }
 
     public static func furniture(_ itemID: String) -> PixelSprite? {
+        all[itemID]
+    }
+
+    public static func fish(_ fishID: String) -> PixelSprite? {
+        all["fish.\(fishID)"]
+    }
+
+    public static func dish(_ itemID: String) -> PixelSprite? {
         all[itemID]
     }
 
@@ -837,6 +845,529 @@ public enum SpriteLibrary {
                 "oyYYYYYYyo",
                 "oooooooooo",
                 ".........."
+            ]
+        )
+    ]
+
+    // MARK: Fish
+
+    private static let fish: [PixelSprite] = [
+        PixelSprite(
+            key: "fish.minnow",
+            width: 12,
+            palette: ["o": "3E4A55", "b": "8FA9B8", "B": "C9DCE6", "w": "FFFFFF", "k": "26303A"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooBBBBBBo.",
+                ".oBBBBBBBBBo",
+                "ooBBBBkBBBko",
+                "oBBBBBBBBBBo",
+                ".oBBBBBBBBo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.bluegill",
+            width: 12,
+            palette: ["o": "2E4150", "b": "4F8AAE", "B": "8FC3DD", "y": "F2C744", "k": "22303A"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooBBBBBBo.",
+                ".oBBBBBBBBBo",
+                "ooBBBBkBBByo",
+                "oBBBBBBByyyo",
+                ".oBBBBBBByo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.perch",
+            width: 12,
+            palette: ["o": "3E3A2A", "g": "6E8A4F", "G": "A8C46E", "y": "E8C15A", "k": "26241A"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooGGGGGGo.",
+                ".oGGGGGGGGGo",
+                "ooGGGGkGGGyo",
+                "oGGyGGGGyyyo",
+                ".oGGyGGGGyo.",
+                "..ooGGGGGoo.",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.carp",
+            width: 12,
+            palette: ["o": "4A3A24", "b": "A87A4F", "B": "D3A478", "y": "E8C15A", "k": "2B2119"],
+            rows: [
+                "............",
+                "....oooo....",
+                "..ooBBBBBBo.",
+                ".oBBBBBBBBBo",
+                "ooBBBBkBBByo",
+                "oBBBBBBByyyo",
+                ".oBBBBBBByo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.trout",
+            width: 12,
+            palette: ["o": "34424A", "b": "7FA8B8", "B": "C9E4EF", "p": "E8879F", "k": "223038"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooBBBBBBo.",
+                ".oBBpBBpBBBo",
+                "ooBBBBkBBpBo",
+                "oBpBBBBBBBBo",
+                ".oBBpBBBBBo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.catfish",
+            width: 12,
+            palette: ["o": "2E2A32", "b": "5E5A6B", "B": "928FA3", "w": "D9D6E0", "k": "1D1A21"],
+            rows: [
+                "....w..w....",
+                ".....oooo...",
+                "..ooBBBBBBo.",
+                ".oBBBBBBBBBo",
+                "ooBBBBkBBBBo",
+                "oBBBBBBBBBBw",
+                ".oBBBBBBBBo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.bass",
+            width: 12,
+            palette: ["o": "2E3A26", "g": "4F6B3A", "G": "7FA84F", "y": "E8C15A", "k": "1F281A"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooGGGGGGo.",
+                ".oGGGGGGGGGo",
+                "ooGGGGkGGGGo",
+                "oGGyGGGGGyyo",
+                ".oGGyGGGGyo.",
+                "..ooGGGGGoo.",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.koi",
+            width: 12,
+            palette: ["o": "6B3A24", "r": "E8754A", "R": "FFB07A", "w": "FFF4E8", "k": "2B1B1B"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooRRRRRRo.",
+                ".oRRwRRRwRRo",
+                "ooRRRRkRRRRo",
+                "oRwRRRRRRwRo",
+                ".oRRwRRRRRo.",
+                "..ooRRRRoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.eel",
+            width: 14,
+            palette: ["o": "2A2A38", "b": "4F4F6B", "B": "7A7A9E", "y": "E8C15A", "k": "1B1B26"],
+            rows: [
+                "..............",
+                "...oooo.......",
+                "..oBBBBooo....",
+                ".oBBBBBBBBoo..",
+                "oBBBBBkBBBBBBo",
+                ".oBBBBBBBBBBo.",
+                "..ooooBBBBoo..",
+                "......oooo...."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.rainbowTrout",
+            width: 12,
+            palette: ["o": "34424A", "b": "8FB4C9", "B": "DDF5FF", "r": "E8754A", "y": "F2C744", "k": "223038"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooBBBBBBo.",
+                ".oBrBBrBBBBo",
+                "ooByBBkBBrBo",
+                "oBrBBBBBBBBo",
+                ".oByBrBBBBo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.moonfish",
+            width: 12,
+            palette: ["o": "30364A", "b": "8E9AC4", "B": "D9E0FF", "w": "FFFFFF", "k": "1E2233"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooBBBBBBo.",
+                ".oBBwBBwBBBo",
+                "ooBBBBkBBBBo",
+                "oBBwBBBBwBBo",
+                ".oBBBBBBBBo.",
+                "..ooBBBBoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.goldenCarp",
+            width: 12,
+            palette: ["o": "6B4A12", "y": "E8BC55", "Y": "FFE08A", "w": "FFF6D8", "k": "3A2A10"],
+            rows: [
+                "............",
+                ".....oooo...",
+                "..ooYYYYYYo.",
+                ".oYYYYYYYYYo",
+                "ooYYYYkYYYyo",
+                "oYYwYYYYYyyo",
+                ".oYYYYYYYyo.",
+                "..ooYYYYoo..",
+                ".....oo....."
+            ]
+        ),
+        PixelSprite(
+            key: "fish.hollowSturgeon",
+            width: 14,
+            palette: ["o": "262E38", "b": "4F5E6B", "B": "7F93A3", "w": "C9DCE6", "k": "171D24"],
+            rows: [
+                "..............",
+                "....oo........",
+                "..ooBBoooo....",
+                ".oBBBBBBBBoo..",
+                "oBBwBBBkBBBBBo",
+                "oBBBBBBBBBBBBo",
+                ".oBBBBBBBBBBo.",
+                "..ooBBBBBBoo..",
+                "....oooooo...."
+            ]
+        )
+    ]
+
+    // MARK: Dishes
+
+    private static let dishes: [PixelSprite] = [
+        PixelSprite(
+            key: "dish.omelette",
+            width: 12,
+            palette: ["o": "7A5A3A", "p": "D9E4EA", "y": "F2C744", "Y": "FFE08A", "r": "E8754A", "g": "6FA84F"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opYYYYYYpo.",
+                ".opYYrYYYpo.",
+                ".opYrrrYYpo.",
+                ".opYYYYYYpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.honeyToast",
+            width: 12,
+            palette: ["o": "6B4A24", "w": "D9A478", "W": "F2C99A", "y": "E8A93B", "Y": "FFD37A"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oWWWWWWo..",
+                ".oWwWWyWWWo.",
+                ".oWwWyyyWWo.",
+                ".oWwWyYyWWo.",
+                ".oWwWWyWWWo.",
+                "..oWWWWWWo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.berryParfait",
+            width: 12,
+            palette: ["o": "5A3A4A", "g": "A8DDF0", "w": "FFF4E8", "r": "E04458", "R": "FF6B7A"],
+            rows: [
+                "............",
+                "..o......o..",
+                "..oggggggo..",
+                "..owwwwwwo..",
+                "..orrrrrro..",
+                "..owwwwwwo..",
+                "..orRrrrro..",
+                "..oggggggo..",
+                "..oooooooo..",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.carrotCake",
+            width: 12,
+            palette: ["o": "6B4A24", "c": "F2C99A", "C": "FFF4E8", "r": "E8754A", "g": "6FA84F"],
+            rows: [
+                "............",
+                "....gg......",
+                "...oCCCo....",
+                "..oCCCCCo...",
+                ".oCrrrrrCo..",
+                ".oCCCCCCCo..",
+                ".oCrrrrrCo..",
+                ".oCCCCCCCo..",
+                "..ooooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.cornChowder",
+            width: 12,
+            palette: ["o": "6B5A3A", "p": "D9E4EA", "y": "E8C15A", "Y": "FFE08A", "g": "6FA84F"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opYYYYYYpo.",
+                ".opYyYYyYpo.",
+                ".opYYgYYYpo.",
+                ".opYyYYyYpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.pumpkinSoup",
+            width: 12,
+            palette: ["o": "6B3A24", "p": "D9E4EA", "O": "E87524", "Y": "F9A44A", "g": "4F7D3B"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opOOOOOOpo.",
+                ".opOYYYYOpo.",
+                ".opOYggYOpo.",
+                ".opOYYYYOpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.lavenderTea",
+            width: 12,
+            palette: ["o": "5A4A6B", "p": "D9E4EA", "v": "8E6BC4", "V": "B79BE0", "w": "FFF4E8"],
+            rows: [
+                "............",
+                "....vv......",
+                "...vVVv.....",
+                "..oVVVVo....",
+                "..oVVVVo....",
+                "..oVVVVo....",
+                "...oooo.....",
+                "..opwwpo....",
+                "...oooo.....",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.sunflowerSalad",
+            width: 12,
+            palette: ["o": "5A4A2A", "p": "D9E4EA", "g": "6FA84F", "G": "9BD06C", "y": "E8C15A", "r": "E8754A"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opgGGgGGpo.",
+                ".opGyGgGrpo.",
+                ".opGGgGGGpo.",
+                ".opgGrGGgpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.goatCheesePlate",
+            width: 12,
+            palette: ["o": "6B4A24", "p": "D9E4EA", "c": "F2E8D5", "C": "FFF8EA", "y": "E8C15A", "g": "6FA84F"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opCCCCCCpo.",
+                ".opCccCcypo.",
+                ".opyCccCCpo.",
+                ".opCCgCCCpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.duckCustard",
+            width: 12,
+            palette: ["o": "6B5A3A", "p": "D9E4EA", "y": "F2C744", "Y": "FFE08A", "r": "C95B4E"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opYYYYYYpo.",
+                ".opYyYYyYpo.",
+                ".opYYrrYYpo.",
+                ".opYyYYyYpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.trufflePasta",
+            width: 12,
+            palette: ["o": "5A3A2A", "p": "D9E4EA", "y": "E8C15A", "Y": "FFE08A", "b": "7A5540", "g": "6FA84F"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opYYYYYYpo.",
+                ".opYybbYyYpo",
+                ".opYbYYbYYpo",
+                ".opYybbYyYpo",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.moonberryTart",
+            width: 12,
+            palette: ["o": "3A3450", "p": "D9E4EA", "b": "4E6FC4", "B": "8FB4FF", "w": "EAF2FF", "y": "E8C15A"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opBBBBBBpo.",
+                ".opBbBwbBpo.",
+                ".opBBbBbBpo.",
+                ".opyBBBBypo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.moonlitCocoa",
+            width: 12,
+            palette: ["o": "4A3A4A", "p": "D9E4EA", "b": "4E6FC4", "B": "8FB4FF", "w": "EAF2FF"],
+            rows: [
+                "............",
+                "....ww......",
+                "...wBBw.....",
+                "..oBBBBo....",
+                "..oBwBBo....",
+                "..oBBBBo....",
+                "...oooo.....",
+                "..opBBpo....",
+                "...oooo.....",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.harvestStew",
+            width: 12,
+            palette: ["o": "6B3A24", "p": "D9E4EA", "O": "E87524", "y": "E8C15A", "g": "6FA84F", "b": "7A5540"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opOOOOOOpo.",
+                ".opOyggOyppo",
+                ".opOygbbOpo.",
+                ".opOyggOyppo",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.goldenPancakes",
+            width: 12,
+            palette: ["o": "6B4A24", "p": "D9E4EA", "y": "E8C15A", "Y": "FFE08A", "w": "FFF4E8", "b": "B8892E"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opYYYYYYpo.",
+                ".opyyyyyypo.",
+                ".opYyYYyYpo.",
+                ".opyyyyyypo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.anglersPie",
+            width: 12,
+            palette: ["o": "6B4A24", "p": "D9E4EA", "y": "E8C15A", "Y": "FFE08A", "b": "7FA8B8", "g": "6FA84F"],
+            rows: [
+                "............",
+                "...oooooo...",
+                "..oppppppo..",
+                ".opYyYYyYpo.",
+                ".opyYbYyYpo.",
+                ".opYyYbYyppo",
+                ".opYyYYyYpo.",
+                "..oppppppo..",
+                "...oooooo...",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.sturgeonFeast",
+            width: 12,
+            palette: ["o": "3A2E28", "p": "D9E4EA", "b": "7FA8B8", "B": "C9E4EF", "y": "E8C15A", "g": "6FA84F"],
+            rows: [
+                "............",
+                "..oooooooo..",
+                ".oppppppppo.",
+                ".opBBBBBBpo.",
+                ".opBbBBbBpo.",
+                ".opBBBBBBpo.",
+                ".opgyyyygpo.",
+                ".oppppppppo.",
+                "..oooooooo..",
+                "............"
+            ]
+        ),
+        PixelSprite(
+            key: "dish.hollowFeast",
+            width: 12,
+            palette: ["o": "3A2E28", "p": "D9E4EA", "r": "E8754A", "y": "E8C15A", "g": "6FA84F", "v": "8E6BC4"],
+            rows: [
+                "............",
+                "..oooooooo..",
+                ".oppppppppo.",
+                ".oprygvyrpo.",
+                ".opygrvygpo.",
+                ".opvgyrgyppo",
+                ".opyrgvyrppo",
+                ".oppppppppo.",
+                "..oooooooo..",
+                "............"
             ]
         )
     ]

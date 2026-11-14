@@ -130,6 +130,9 @@ public struct BarnView: View {
             FarmQuickAction(title: "Collect all", icon: "shippingbox.fill", tint: HHTheme.goldDeep) {
                 store.collectAll()
             }
+            FarmQuickAction(title: "Pet all", icon: "hand.raised.fill", tint: HHTheme.lavender) {
+                store.petAll()
+            }
             FarmQuickAction(title: "Get feed", icon: "cart.fill", tint: HHTheme.terracotta) {
                 store.buySupply("supply.feed", quantity: 1)
             }
@@ -398,6 +401,22 @@ struct PenCard: View {
                     }
                     .frame(maxWidth: 150)
 
+                    HStack(spacing: 5) {
+                        Image(systemName: "hand.raised.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(HHTheme.lavender)
+                        CozyProgressBar(
+                            value: max(0, min(1, animal.affection / 100)),
+                            tint: HHTheme.lavender,
+                            height: 5
+                        )
+                        Text(animal.affectionTitle)
+                            .font(.hhCaption(9))
+                            .foregroundStyle(HHTheme.muted)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: 150)
+
                     fedBadge(animal: animal, species: species)
                 }
 
@@ -461,6 +480,16 @@ struct PenCard: View {
                 .opacity(store.itemCount("supply.feed") == 0 || animal.isFed(at: Date()) ? 0.5 : 1)
 
                 Button {
+                    store.pet(penID: pen.id)
+                } label: {
+                    Label("Pet", systemImage: "hand.raised.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CozySecondaryButtonStyle())
+                .disabled(!animal.canPet(at: Date()))
+                .opacity(animal.canPet(at: Date()) ? 1 : 0.45)
+
+                Button {
                     store.collect(penID: pen.id)
                 } label: {
                     Label("Collect", systemImage: "basket.fill")
@@ -513,7 +542,8 @@ struct PenCard: View {
     }
 
     private func productionProgress(animal: AnimalInstance, species: AnimalSpecies) -> Double {
-        let interval = max(5, species.produceSeconds / (0.75 + max(20, animal.happiness) / 400))
+        let affectionBonus = min(0.2, animal.affection / 500)
+        let interval = max(5, species.produceSeconds / (0.75 + max(20, animal.happiness) / 400 + affectionBonus))
         return min(1, max(0, animal.progress / interval))
     }
 }

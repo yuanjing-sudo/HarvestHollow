@@ -62,15 +62,18 @@ public final class GameEngine {
             }
         }
 
-        // Crops grow in real seconds while watered. Weather and fertilizer
-        // both speed things up.
+        // Crops grow in real seconds while watered. Weather, fertilizer, and a
+        // good cooked meal all speed things up.
+        let mealSpeed = activeGrowthMultiplier(at: now)
         for index in state.plots.indices {
             guard var crop = state.plots[index].crop,
                   crop.watered,
                   !crop.isReady else { continue }
             let definition = catalog.crop(crop.cropID)
             let growSeconds = max(1, definition?.growSeconds ?? 60)
-            let speed = state.weather.growthMultiplier * (crop.fertilized ? 1.5 : 1.0)
+            let speed = state.weather.growthMultiplier
+                * (crop.fertilized ? 1.5 : 1.0)
+                * mealSpeed
             crop.growth = min(1, crop.growth + elapsed / growSeconds * speed)
             state.plots[index].crop = crop
         }
@@ -81,14 +84,16 @@ public final class GameEngine {
             guard var animal = state.pens[index].animal,
                   let species = catalog.animal(animal.speciesID) else { continue }
 
-            animal.happiness = max(20, animal.happiness - elapsed / 600)
+            let affectionComfort = animal.affection / 1_800
+            animal.happiness = max(20, animal.happiness - elapsed / (600 + affectionComfort * 600))
 
             var produced = 0
             if let fedUntil = animal.fedUntil {
                 let productiveEnd = min(now, fedUntil)
                 if productiveEnd > productiveStart, animal.stored < species.capacity {
                     let happiness = max(20, animal.happiness)
-                    let interval = max(5, species.produceSeconds / (0.75 + happiness / 400))
+                    let affectionBonus = min(0.2, animal.affection / 500)
+                    let interval = max(5, species.produceSeconds / (0.75 + happiness / 400 + affectionBonus))
                     animal.progress += productiveEnd.timeIntervalSince(productiveStart)
 
                     while animal.progress >= interval, animal.stored < species.capacity {
@@ -130,7 +135,14 @@ public final class GameEngine {
 
     private func advanceDay() {
         state.day += 1
-        state.weather = withRNG { Weather.roll(using: &$0) }
+        state.weather = state.nextWeather
+        state.nextWeather = withRNG { Weather.roll(using: &$0) }
+        state.activities.weatherHistory.append(state.weather)
+        if state.activities.weatherHistory.count > 10 {
+            state.activities.weatherHistory.removeFirst(
+                state.activities.weatherHistory.count - 10
+            )
+        }
 
         if state.weather == .rainy {
             for index in state.plots.indices where state.plots[index].crop != nil {
@@ -210,12 +222,36 @@ public final class GameEngine {
 
     public func sellPrice(for itemID: String, onDay day: Int? = nil) -> Int {
         guard let item = catalog.item(itemID), item.sellPrice > 0 else { return 0 }
-        return Market.sellPrice(
+        let base = Market.sellPrice(
             base: item.sellPrice,
             itemID: itemID,
             day: day ?? state.day,
             comfort: comfort
         )
+        var multiplier = 1.0
+        if item.kind == .produce,
+           let crop = catalog.crops.first(where: { $0.produceItemID == itemID }) {
+            let harvests = state.stats.harvestedByCrop[crop.id, default: 0]
+            multiplier += CropMastery.saleBonus(for: harvests)
+        }
+        multiplier += activeMarketBonus(at: clock())
+        return max(1, Int((Double(base) * multiplier).rounded()))
+    }
+
+    public func cropMasteryLevel(_ cropID: String) -> Int {
+        CropMastery.level(for: state.stats.harvestedByCrop[cropID, default: 0])
+    }
+
+    public func cropMasteryTier(_ cropID: String) -> CropMasteryTier {
+        CropMastery.tier(for: state.stats.harvestedByCrop[cropID, default: 0])
+    }
+
+    public func cropMasteryProgress(_ cropID: String) -> Double {
+        CropMastery.progress(for: state.stats.harvestedByCrop[cropID, default: 0])
+    }
+
+    public func cropHarvestCount(_ cropID: String) -> Int {
+        state.stats.harvestedByCrop[cropID, default: 0]
     }
 
     public func itemCount(_ itemID: String) -> Int {
@@ -373,9 +409,14 @@ public final class GameEngine {
 
         let baseYield = withRNG { $0.int(in: crop.minYield...crop.maxYield) }
         let yield = baseYield + (cropInstance.fertilized ? 1 : 0)
+        let previousMastery = cropMasteryLevel(crop.id)
         addItem(crop.produceItemID, yield)
         state.stats.cropsHarvested += yield
         state.stats.harvestedByCrop[crop.id, default: 0] += yield
+        let currentMastery = cropMasteryLevel(crop.id)
+        if currentMastery > previousMastery {
+            emit(.masteryUp(cropID: crop.id, level: currentMastery))
+        }
 
         var bonusSeed = false
         if withRNG({ $0.chance(0.22) }) {
@@ -706,7 +747,10 @@ public final class GameEngine {
         guard let item = catalog.item(itemID), item.isSellable else {
             return .failure("That item cannot be sold.")
         }
-        guard item.kind == .produce || item.kind == .animalProduct || item.kind == .supply else {
+        switch item.kind {
+        case .produce, .animalProduct, .fish, .dish, .supply:
+            break
+        case .seed, .furniture:
             return .failure("Seeds and furniture are keepers, not market stock.")
         }
         guard itemCount(itemID) >= quantity else {
@@ -741,6 +785,7 @@ public final class GameEngine {
         if order.progress >= order.target {
             order.completed = true
             state.coins += order.rewardCoins
+            state.activities.dailyOrdersCompleted += 1
             awardXP(order.rewardXP)
             emit(.dailyOrderCompleted(
                 itemID: itemID,
@@ -928,5 +973,589 @@ public final class GameEngine {
 
     private func cropName(_ cropID: String) -> String {
         catalog.crop(cropID)?.name ?? "crop"
+    }
+
+    // MARK: - Food buffs
+
+    public var currentFoodBuff: FoodBuff? {
+        guard let buff = state.activities.activeBuff else { return nil }
+        return buff.isActive(at: clock()) ? buff : nil
+    }
+
+    public var foodBuffSecondsRemaining: Int {
+        Int(currentFoodBuff?.secondsRemaining(at: clock()) ?? 0)
+    }
+
+    public func foodBuffRemaining(at date: Date? = nil) -> Double {
+        guard let buff = state.activities.activeBuff else { return 0 }
+        return buff.secondsRemaining(at: date ?? clock())
+    }
+
+    private func activeGrowthMultiplier(at date: Date) -> Double {
+        guard let buff = state.activities.activeBuff, buff.isActive(at: date) else { return 1 }
+        switch buff.kind {
+        case .growth, .feast:
+            return 1 + buff.magnitude
+        case .market, .fishing:
+            return 1
+        }
+    }
+
+    private func activeMarketBonus(at date: Date) -> Double {
+        guard let buff = state.activities.activeBuff, buff.isActive(at: date) else { return 0 }
+        switch buff.kind {
+        case .market, .feast:
+            return buff.magnitude
+        case .growth, .fishing:
+            return 0
+        }
+    }
+
+    private func activeFishingBonus(at date: Date) -> Double {
+        guard let buff = state.activities.activeBuff, buff.isActive(at: date) else { return 0 }
+        switch buff.kind {
+        case .fishing, .feast:
+            return buff.magnitude
+        case .growth, .market:
+            return 0
+        }
+    }
+
+    public func clearExpiredBuff() {
+        guard let buff = state.activities.activeBuff, !buff.isActive(at: clock()) else { return }
+        state.activities.activeBuff = nil
+    }
+
+    // MARK: - Pond & fishing
+
+    public var fishingRodName: String {
+        FishingBalance.rodName(level: state.activities.fishing.rodLevel)
+    }
+
+    public var fishingRodLevel: Int {
+        state.activities.fishing.rodLevel
+    }
+
+    public var fishingRodUpgradeCost: Int {
+        FishingBalance.upgradeCost(from: state.activities.fishing.rodLevel)
+    }
+
+    public var fishingRodUpgradeLevel: Int {
+        FishingBalance.upgradeLevelRequirement(from: state.activities.fishing.rodLevel)
+    }
+
+    public var canUpgradeFishingRod: Bool {
+        guard state.activities.fishing.rodLevel < FishingBalance.maxRodLevel else { return false }
+        return state.level >= fishingRodUpgradeLevel
+            && state.coins >= fishingRodUpgradeCost
+    }
+
+    public var baitCount: Int {
+        itemCount(FishingBalance.baitItemID)
+    }
+
+    public var fishCaughtCount: Int {
+        state.activities.fishing.totalCatches
+    }
+
+    public var uniqueFishCaught: Int {
+        state.activities.fishing.uniqueCatches
+    }
+
+    public func fishCatchCount(_ fishID: String) -> Int {
+        state.activities.fishing.catches[fishID, default: 0]
+    }
+
+    public func bestWeight(forFish fishID: String) -> Double {
+        state.activities.fishing.bestWeight[fishID, default: 0]
+    }
+
+    public func isFishCaught(_ fishID: String) -> Bool {
+        fishCatchCount(fishID) > 0
+    }
+
+    public var rarestFishCaught: FishDefinition? {
+        let caught = state.activities.fishing.catches.filter { $0.value > 0 }.map(\.key)
+        let order: [FishRarity: Int] = [
+            .common: 0, .uncommon: 1, .rare: 2, .epic: 3, .legendary: 4
+        ]
+        return caught.compactMap { catalog.fishDefinition($0) }
+            .max { (order[$0.rarity] ?? 0) < (order[$1.rarity] ?? 0) }
+    }
+
+    @discardableResult
+    public func upgradeFishingRod() -> ActionResult {
+        let current = state.activities.fishing.rodLevel
+        guard current < FishingBalance.maxRodLevel else {
+            return .failure("Your rod is already a Hollowmaster. Finn would be jealous.")
+        }
+        let requiredLevel = FishingBalance.upgradeLevelRequirement(from: current)
+        guard state.level >= requiredLevel else {
+            return .failure("Reach farmer level \(requiredLevel) to upgrade your rod.")
+        }
+        let cost = FishingBalance.upgradeCost(from: current)
+        guard state.coins >= cost else {
+            return .failure("You need \(cost - state.coins) more coins for the upgrade.")
+        }
+
+        state.coins -= cost
+        state.activities.fishing.rodLevel = current + 1
+        state.activities.lastRodUpgradeDay = state.day
+        awardXP(25)
+        emit(.rodUpgraded(level: current + 1))
+        return .success("Upgraded to the \(FishingBalance.rodName(level: current + 1)). Rare fish are within reach.")
+    }
+
+    private func chooseFish(for rng: inout GameRNG, at date: Date) -> FishDefinition {
+        let time = state.timeOfDay
+        let buff = activeFishingBonus(at: date)
+        let rod = max(1, state.activities.fishing.rodLevel)
+        let eligible = catalog.fish.filter { $0.unlockRodLevel <= rod }
+        guard !eligible.isEmpty else { return catalog.fish[0] }
+
+        let weighted: [(FishDefinition, Double)] = eligible.map { fish in
+            var weight = fish.rarity.baseWeight
+            let rodHeadroom = max(0, rod - fish.unlockRodLevel)
+            weight *= 1 + Double(rodHeadroom) * 0.16
+            if fish.rarity == .common {
+                weight *= max(0.32, 1 - Double(rod - 1) * 0.14)
+            }
+            if fish.rarity == .legendary {
+                weight *= 1 + Double(rod - 1) * 0.08
+            }
+            if fish.preferredWeather.contains(state.weather) {
+                weight *= 1.75
+            }
+            if fish.timeWindow.matches(timeOfDay: time) {
+                weight *= 1.55
+            }
+            if buff > 0 {
+                switch fish.rarity {
+                case .common:
+                    weight *= max(0.4, 1 - buff * 1.2)
+                case .uncommon:
+                    weight *= 1 + buff * 0.4
+                case .rare, .epic, .legendary:
+                    weight *= 1 + buff * 2.8
+                }
+            }
+            weight += state.weather.fishingBonus * 12 * (fish.rarity == .common ? 0.3 : 1)
+            return (fish, max(0.1, weight))
+        }
+
+        let total = weighted.reduce(0) { $0 + $1.1 }
+        guard total > 0 else { return eligible[0] }
+        var roll = rng.double01() * total
+        for (fish, weight) in weighted {
+            roll -= weight
+            if roll <= 0 { return fish }
+        }
+        return weighted.last?.0 ?? eligible[0]
+    }
+
+    @discardableResult
+    public func castLine(at date: Date? = nil) -> ActionResult {
+        let now = date ?? clock()
+        guard itemCount(FishingBalance.baitItemID) > 0 else {
+            return .failure("Your bait tin is empty. Buy pond bait at the market.")
+        }
+
+        removeItem(FishingBalance.baitItemID, 1)
+        state.activities.fishing.totalCasts += 1
+
+        var rng = GameRNG(state: state.rngState)
+        let fish = chooseFish(for: &rng, at: now)
+        let perfect = rng.chance(
+            FishingBalance.perfectCastChance + activeFishingBonus(at: now) * 0.35
+        )
+        var weight = fish.minWeight
+            + rng.double01() * max(0.01, fish.maxWeight - fish.minWeight)
+        if perfect {
+            weight *= 1.18
+            state.activities.fishing.perfectCasts += 1
+        }
+        weight = (weight * 10).rounded() / 10
+        state.rngState = rng.state
+
+        addItem(fish.itemID, 1)
+        state.activities.fishing.totalCatches += 1
+        state.activities.fishing.catches[fish.id, default: 0] += 1
+        if weight > (state.activities.fishing.bestWeight[fish.id] ?? 0) {
+            state.activities.fishing.bestWeight[fish.id] = weight
+        }
+        if weight > state.activities.fishing.biggestWeight {
+            state.activities.fishing.biggestWeight = weight
+            state.activities.fishing.biggestFishID = fish.id
+        }
+        let record = FishingCatchRecord(fishID: fish.id, weight: weight, caughtAt: now)
+        state.activities.fishing.recentCatches.insert(record, at: 0)
+        if state.activities.fishing.recentCatches.count > 12 {
+            state.activities.fishing.recentCatches.removeLast(
+                state.activities.fishing.recentCatches.count - 12
+            )
+        }
+
+        awardXP(fish.rarity.xp + (perfect ? 4 : 0))
+        emit(.fishCaught(fishID: fish.id, weight: weight, rarity: fish.rarity))
+
+        var text = "Caught a \(fish.name) · \(String(format: "%.1f", weight)) lb."
+        if perfect {
+            text += " A perfect cast!"
+        }
+        return .success(text)
+    }
+
+    // MARK: - Kitchen
+
+    public func canCook(_ recipe: RecipeDefinition, at date: Date? = nil) -> Bool {
+        guard state.level >= recipe.unlockLevel else { return false }
+        return recipe.ingredients.allSatisfy { itemID, quantity in
+            itemCount(itemID) >= quantity
+        }
+    }
+
+    public func missingIngredients(for recipe: RecipeDefinition) -> [(itemID: String, quantity: Int)] {
+        recipe.ingredients.compactMap { itemID, needed in
+            let missing = max(0, needed - itemCount(itemID))
+            return missing > 0 ? (itemID, missing) : nil
+        }
+        .sorted { $0.itemID < $1.itemID }
+    }
+
+    public func cookedCount(recipeID: String) -> Int {
+        state.activities.cookedRecipeIDs[recipeID, default: 0]
+    }
+
+    public func hasCooked(recipeID: String) -> Bool {
+        cookedCount(recipeID: recipeID) > 0
+    }
+
+    public var dishesCookedCount: Int {
+        state.activities.dishesCooked
+    }
+
+    public var uniqueRecipesCooked: Int {
+        state.activities.uniqueRecipesCooked
+    }
+
+    public var cookedRecipeIDs: [String] {
+        state.activities.cookedRecipeIDs
+            .filter { $0.value > 0 }
+            .map(\.key)
+            .sorted()
+    }
+
+    @discardableResult
+    public func cook(recipeID: String, at date: Date? = nil) -> ActionResult {
+        guard let recipe = catalog.recipe(recipeID) else {
+            return .failure("That recipe is not in the book.")
+        }
+        guard state.level >= recipe.unlockLevel else {
+            return .failure("\(recipe.name) unlocks at level \(recipe.unlockLevel).")
+        }
+        let missing = missingIngredients(for: recipe)
+        guard missing.isEmpty else {
+            let names = missing.compactMap { entry -> String? in
+                guard let item = catalog.item(entry.itemID) else { return nil }
+                return "\(entry.quantity) × \(item.name)"
+            }
+            return .failure("Missing ingredients: \(names.joined(separator: ", ")).")
+        }
+
+        for (itemID, quantity) in recipe.ingredients {
+            removeItem(itemID, quantity)
+        }
+        addItem(recipe.dishItemID, 1)
+        state.activities.cookedRecipeIDs[recipe.id, default: 0] += 1
+        if state.activities.favoriteRecipeID == nil {
+            state.activities.favoriteRecipeID = recipe.id
+        }
+        awardXP(recipe.xp)
+        emit(.cooked(
+            recipeID: recipe.id,
+            dishName: recipe.name,
+            buffKind: recipe.buff.kind,
+            percent: recipe.buff.percent
+        ))
+        return .success("Cooked \(recipe.name). It is waiting in your pantry.")
+    }
+
+    @discardableResult
+    public func cookAllPossible() -> ActionResult {
+        var cooked = 0
+        for recipe in catalog.recipes.sorted(by: { $0.unlockLevel < $1.unlockLevel })
+        where canCook(recipe) {
+            if cook(recipeID: recipe.id).isSuccess {
+                cooked += 1
+            }
+        }
+        guard cooked > 0 else {
+            return .failure("No recipe has all its ingredients yet.")
+        }
+        return .success("Cooked \(cooked) \(cooked == 1 ? "dish" : "dishes").")
+    }
+
+    @discardableResult
+    public func eatDish(itemID: String, at date: Date? = nil) -> ActionResult {
+        guard let recipe = catalog.recipeForDish(itemID) else {
+            return .failure("That dish is not part of a recipe.")
+        }
+        guard itemCount(itemID) > 0 else {
+            return .failure("There is no \(recipe.name) in the pantry.")
+        }
+        let now = date ?? clock()
+        removeItem(itemID, 1)
+        let buff = FoodBuff(
+            kind: recipe.buff.kind,
+            magnitude: recipe.buff.magnitude,
+            expiresAt: now.addingTimeInterval(recipe.buff.duration),
+            name: recipe.name,
+            emoji: recipe.emoji
+        )
+        state.activities.activeBuff = buff
+        state.activities.dishesEaten += 1
+        awardXP(2)
+        emit(.mealEnjoyed(
+            dishID: itemID,
+            buffName: recipe.name,
+            percent: recipe.buff.percent,
+            seconds: Int(recipe.buff.duration)
+        ))
+        return .success("Enjoyed \(recipe.name). \(recipe.buff.kind.summary)")
+    }
+
+    // MARK: - Daily gift
+
+    public var canClaimDailyGift: Bool {
+        !state.activities.hasClaimedGift(onDay: state.day)
+    }
+
+    /// The one-based position in the seven-day gift cycle that will be claimed
+    /// next (or that was claimed today, once the gift has been opened).
+    public var dailyGiftCycleDay: Int {
+        if state.activities.lastGiftDay == state.day {
+            return ((max(1, state.activities.giftStreak) - 1) % 7) + 1
+        }
+        if state.activities.lastGiftDay == state.day - 1 {
+            return (state.activities.giftStreak % 7) + 1
+        }
+        return 1
+    }
+
+    public var dailyGiftStreak: Int {
+        state.activities.giftStreak
+    }
+
+    public var nextDailyGift: DailyGiftDefinition {
+        ActivityCatalog.gift(dayInCycle: dailyGiftCycleDay)
+    }
+
+    @discardableResult
+    public func claimDailyGift() -> ActionResult {
+        guard canClaimDailyGift else {
+            return .failure("Today's parcel is already open. Come back tomorrow morning.")
+        }
+
+        if state.activities.lastGiftDay == state.day - 1 {
+            state.activities.giftStreak += 1
+        } else {
+            state.activities.giftStreak = 1
+        }
+        state.activities.lastGiftDay = state.day
+        state.activities.giftsClaimed += 1
+
+        let cycleDay = ((state.activities.giftStreak - 1) % 7) + 1
+        let gift = ActivityCatalog.gift(dayInCycle: cycleDay)
+        state.coins += gift.coins
+        for (itemID, quantity) in gift.items {
+            addItem(itemID, quantity)
+        }
+        awardXP(gift.xp)
+        emit(.giftClaimed(
+            day: gift.day,
+            streak: state.activities.giftStreak,
+            coins: gift.coins,
+            xp: gift.xp
+        ))
+        return .success("Opened \(gift.title): +\(gift.coins) coins and a few useful things.")
+    }
+
+    // MARK: - Achievements
+
+    public func progress(forAchievement definition: AchievementDefinition) -> AchievementProgress {
+        let current = ActivityCatalog.achievementProgress(
+            definition: definition,
+            state: state,
+            comfort: comfort
+        )
+        return AchievementProgress(
+            definition: definition,
+            current: current,
+            isClaimed: state.activities.isAchievementClaimed(definition.id)
+        )
+    }
+
+    public var achievementProgressList: [AchievementProgress] {
+        catalog.achievements.map { progress(forAchievement: $0) }
+    }
+
+    public var claimableAchievementCount: Int {
+        achievementProgressList.filter(\.canClaim).count
+    }
+
+    public var claimedAchievementCount: Int {
+        state.activities.claimedAchievements.count
+    }
+
+    public func isAchievementClaimed(_ id: String) -> Bool {
+        state.activities.isAchievementClaimed(id)
+    }
+
+    @discardableResult
+    public func claimAchievement(id: String) -> ActionResult {
+        guard let definition = catalog.achievement(id) else {
+            return .failure("That achievement is not in the journal.")
+        }
+        guard !state.activities.isAchievementClaimed(id) else {
+            return .failure("You have already claimed \(definition.title).")
+        }
+        let progress = progress(forAchievement: definition)
+        guard progress.isComplete else {
+            return .failure("\(definition.title) needs \(progress.remaining) more.")
+        }
+
+        state.activities.claimedAchievements.append(id)
+        state.activities.achievementClaimDates[id] = clock()
+        state.coins += definition.rewardCoins
+        for (itemID, quantity) in definition.rewardItems {
+            addItem(itemID, quantity)
+        }
+        awardXP(definition.rewardXP)
+        emit(.achievementClaimed(
+            id: definition.id,
+            title: definition.title,
+            coins: definition.rewardCoins,
+            xp: definition.rewardXP
+        ))
+        return .success("Claimed \(definition.title): +\(definition.rewardCoins) coins.")
+    }
+
+    @discardableResult
+    public func claimAllAchievements() -> ActionResult {
+        let claimable = achievementProgressList.filter(\.canClaim)
+        guard !claimable.isEmpty else {
+            return .failure("No achievements are ready to claim.")
+        }
+        var claimed = 0
+        for entry in claimable {
+            if claimAchievement(id: entry.id).isSuccess {
+                claimed += 1
+            }
+        }
+        return .success("Claimed \(claimed) \(claimed == 1 ? "achievement" : "achievements").")
+    }
+
+    // MARK: - Barn affection
+
+    @discardableResult
+    public func pet(penID: Int, at date: Date? = nil) -> ActionResult {
+        guard let index = state.pens.firstIndex(where: { $0.id == penID }),
+              var animal = state.pens[index].animal else {
+            return .failure("There is no animal in that pen.")
+        }
+        let now = date ?? clock()
+        guard animal.canPet(at: now) else {
+            let seconds = Int(animal.petCooldownRemaining(at: now).rounded(.up))
+            return .failure("\(animal.name) is still basking in the last scratch. \(seconds)s to go.")
+        }
+
+        animal.affection = min(100, animal.affection + 8)
+        animal.happiness = min(100, animal.happiness + 4)
+        animal.lastPettedAt = now
+        animal.petCount += 1
+        state.pens[index].animal = animal
+        state.activities.animalsPetted += 1
+        awardXP(2)
+        emit(.petAnimal(name: animal.name, affection: animal.affection))
+        return .success("You gave \(animal.name) a scratch behind the ears.")
+    }
+
+    @discardableResult
+    public func petAll(at date: Date? = nil) -> ActionResult {
+        let now = date ?? clock()
+        let ready = state.pens.compactMap(\.animal).filter { $0.canPet(at: now) }
+        guard !ready.isEmpty else {
+            return .failure("Everyone has had plenty of attention for the moment.")
+        }
+        var petted = 0
+        for pen in state.pens where pen.animal?.canPet(at: now) == true {
+            if pet(penID: pen.id, at: now).isSuccess {
+                petted += 1
+            }
+        }
+        return .success("Made \(petted) \(petted == 1 ? "friend" : "friends") very happy.")
+    }
+
+    // MARK: - Collection helpers
+
+    public func harvestedCount(cropID: String) -> Int {
+        state.stats.harvestedByCrop[cropID, default: 0]
+    }
+
+    public func isCropDiscovered(_ cropID: String) -> Bool {
+        harvestedCount(cropID: cropID) > 0
+    }
+
+    public func soldCount(itemID: String) -> Int {
+        state.stats.soldByItem[itemID, default: 0]
+    }
+
+    public func isItemDiscovered(_ itemID: String) -> Bool {
+        itemCount(itemID) > 0
+            || soldCount(itemID: itemID) > 0
+            || catalog.recipeForDish(itemID).map { hasCooked(recipeID: $0.id) } == true
+    }
+
+    public var discoveredCropCount: Int {
+        catalog.crops.filter { isCropDiscovered($0.id) }.count
+    }
+
+    public var discoveredDishCount: Int {
+        catalog.recipes.filter { itemCount($0.dishItemID) > 0 || hasCooked(recipeID: $0.id) }.count
+    }
+
+    public var discoveredBarnGoodCount: Int {
+        catalog.animals.filter {
+            isItemDiscovered($0.productItemID)
+        }.count
+    }
+
+    public var collectionProgress: Double {
+        let total = catalog.crops.count
+            + catalog.fish.count
+            + catalog.animals.count
+            + catalog.recipes.count
+        guard total > 0 else { return 0 }
+        let found = discoveredCropCount
+            + uniqueFishCaught
+            + discoveredBarnGoodCount
+            + uniqueRecipesCooked
+        return min(1, Double(found) / Double(total))
+    }
+
+    public var season: FarmSeason {
+        state.season
+    }
+
+    public var festival: FarmFestival? {
+        state.festival
+    }
+
+    public var nextWeather: Weather {
+        state.nextWeather
+    }
+
+    public var weatherHistory: [Weather] {
+        state.activities.weatherHistory
     }
 }

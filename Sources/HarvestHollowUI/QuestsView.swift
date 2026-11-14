@@ -91,6 +91,24 @@ public struct QuestsView: View {
                         tint: HHTheme.terracotta
                     )
                 }
+
+                HStack(spacing: 7) {
+                    TownQuickLink(
+                        title: store.claimableAchievementCount > 0
+                            ? "\(store.claimableAchievementCount) achievement rewards"
+                            : "Achievement journal",
+                        icon: "rosette",
+                        tint: HHTheme.lavender
+                    ) {
+                        store.openTown(.achievements)
+                    }
+                    if store.canClaimDailyGift {
+                        TownQuickLink(title: "Daily gift", icon: "gift.fill", tint: HHTheme.rose) {
+                            store.openTown()
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
             }
         }
     }

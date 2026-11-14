@@ -1,0 +1,212 @@
+# Harvest Hollow 🌾
+
+**A cozy 2D farming game written entirely in Swift.**
+
+Harvest Hollow is a complete, playable farming loop: till the field, plant and water
+crops, raise pixel-art animals, sell at a living market, decorate the farmhouse, follow
+a ten-chapter story, and level up a little valley farm. Every visual is drawn with
+SwiftUI `Canvas` from data-driven coloured squares — no PNG sprite atlases, no web
+views, and no JavaScript.
+
+<p align="center">
+  <img src="docs/icon.png" width="132" alt="Harvest Hollow app icon: a pixel-art red barn, sun, field and pig" />
+</p>
+
+<p align="center">
+  <em>Feed the soil, fill the barn, make the Hollow feel like home.</em>
+</p>
+
+![Harvest Hollow sprite library](docs/sprites.png)
+
+## What is in the game?
+
+| System | What you can do |
+| --- | --- |
+| **Farm** | 24 plots (6 unlocked), 9 crops, watering, fertilizing, multi-plant, multi-water, multi-harvest, growth stages and weather bonuses |
+| **Barn** | 8 pens (2 unlocked), 7 animals, adopt/rename/feed/collect, happiness, production timers, stored goods and two free cycles on adoption |
+| **Market** | Buy seeds, feed and fertilizer; buy furniture and house themes; daily price swings; comfort sale bonus; daily market order |
+| **Inventory** | Filterable satchel with seeds, crops, barn goods, supplies and furniture; quick plant, feed and sell actions |
+| **House** | 14 furniture pieces, drag/arrow placement on a 12×8 room grid, 5 themes, comfort score and up to +25% market bonus |
+| **Quests** | 10-chapter story with automatic objective tracking and rewards, plus a daily order |
+| **Progression** | XP, levels, coin bonuses, crop/animal/plot/pen unlocks, farm records and a trophy |
+| **Persistence** | Autosave every 20 seconds, atomic JSON saves with a backup, offline catch-up (capped at 8 hours), export/import save codes |
+
+### The crops
+
+Wheat, carrot, tomato, strawberry, sunflower, corn, lavender, pumpkin and moonberry.
+Each crop has its own growth time, yield, seed cost, sale price, unlock level and
+10×10 pixel sprite.
+
+### The barn friends
+
+Chicken, duck, cow, sheep, pig, goat and bee. A pig is built from individual pink
+squares with ears, snout, eyes and trotters; the bee has wings and stripes. Every
+animal is a hand-authored grid of coloured cells, not an emoji or an image file.
+
+| Animal | Product | Base production |
+| --- | --- | --- |
+| Chicken | Egg | 50s |
+| Duck | Duck egg | 55s |
+| Cow | Milk | 90s |
+| Sheep | Wool | 120s |
+| Pig | Truffle | 100s |
+| Goat | Goat milk | 80s |
+| Bee | Honey | 60s |
+
+## Playing
+
+- **Plant:** pick a seed in the satchel strip, then tap any empty plot.
+- **Water:** tap a thirsty crop or use **Water all**. Rain waters everything for free
+  at the start of a rainy day.
+- **Harvest:** tap a ripe crop (golden sparkle badge) or use **Harvest all**.
+- **Fertilize:** long-press a growing plot, or open its detail sheet. Fertilizer
+  grows 50% faster and adds +1 yield.
+- **Animals:** open the Barn tab, tap an empty pen, choose a friend, then feed and
+  collect. One feed bag lasts two production cycles.
+- **Sell:** visit the Market tab and switch to **Sell**. Prices move daily; comfort
+  from the farmhouse adds a bonus to every sale.
+- **Decorate:** buy furniture at the market, open the House tab, choose a piece from
+  the shelf, and tap the room. Drag a placed piece or use the arrow controls to nudge it.
+- **Progress:** quests complete automatically. Level-ups unlock new crops, animals,
+  plots and pens.
+
+The in-game day lasts four real minutes. A long break rolls days forward and catches
+up crops and animal production for up to eight hours.
+
+## Architecture
+
+The package is deliberately split so the simulation runs anywhere Swift runs —
+including Linux CI — while the presentation layer is native SwiftUI.
+
+```
+HarvestHollow/
+├── Package.swift
+├── Sources/
+│   ├── HarvestHollowCore/     # Pure Swift simulation, no UI imports
+│   │   ├── Models.swift       # GameState, weather, plots, crops, animals, quests
+│   │   ├── Catalog.swift      # Crops, animals, furniture, themes, quests, items
+│   │   ├── Engine.swift       # Tick loop, actions, validation, events, progression
+│   │   ├── Market.swift       # Deterministic daily price multipliers
+│   │   ├── Persistence.swift  # JSON save codec, atomic store, export/import
+│   │   └── PixelArt.swift     # 38 data-driven pixel sprites
+│   ├── HarvestHollowUI/       # SwiftUI screens and reusable components
+│   │   ├── FarmView.swift
+│   │   ├── BarnView.swift
+│   │   ├── MarketView.swift
+│   │   ├── HouseView.swift
+│   │   ├── QuestsView.swift
+│   │   ├── InventorySheet.swift
+│   │   ├── SettingsSheet.swift
+│   │   ├── RootView.swift
+│   │   ├── GameStore.swift
+│   │   ├── Components.swift
+│   │   └── Theme.swift
+│   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
+├── Tests/                     # 32 core simulation tests
+├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
+├── Tools/                     # Reproducible icon + sprite-sheet generators
+└── docs/
+```
+
+`HarvestHollowCore` owns a value-type `GameState`, advances it with a deterministic
+tick, validates every action and emits lightweight events for toasts and level-ups.
+`GameStore` is the SwiftUI bridge: it owns the engine, drives a 1-second timer,
+autosaves, queues feedback and exposes the state as `ObservableObject`.
+
+### Pixel art from coloured squares
+
+Each sprite is a small ASCII grid plus a palette:
+
+```swift
+PixelSprite(
+    key: "animal.pig",
+    width: 14,
+    palette: ["p": "F3A6B8", "d": "D97B92", "k": "2B1B1B", ...],
+    rows: [
+        "...oo....oo...",
+        "..oppo..oppo..",
+        ...
+    ]
+)
+```
+
+`PixelSpriteView` renders every non-`.` cell as its own square on a SwiftUI `Canvas`,
+scaled with integer-friendly nearest-neighbour geometry. Tests assert every row is the
+declared width and every character has a palette colour. The CLI's `validate` command
+checks all 38 sprites, and the sprite sheet above is generated straight from
+`PixelArt.swift`.
+
+## Run it
+
+### Requirements
+
+- **iOS 17+** or **macOS 14+**
+- **Xcode 15+** (Swift 5.9 toolchain or newer)
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) for the iOS app project:
+  `brew install xcodegen`
+
+### iOS app
+
+```bash
+git clone https://github.com/yuanjing-sudo/HarvestHollow.git
+cd HarvestHollow/Apps/HarvestHollow
+xcodegen generate
+open HarvestHollow.xcodeproj
+```
+
+Select the `HarvestHollow` scheme, choose an iPhone/iPad simulator, and run. To use a
+physical device, set your development team in the target's **Signing & Capabilities**
+tab. The app target consumes the repository as a local Swift package
+(`HarvestHollowUI`), so there is nothing else to install.
+
+### Package, tests and CLI
+
+```bash
+swift build
+swift test                              # 32 tests
+swift run harvesthollow demo            # full headless gameplay loop
+swift run harvesthollow sprites pig     # terminal sprite browser
+swift run harvesthollow validate        # check all 38 sprite grids
+```
+
+The CLI uses ANSI colours in a terminal. On Linux, `HarvestHollowUI` compiles as an
+empty compatibility target because SwiftUI is unavailable; the core and CLI still
+build and test normally.
+
+## Saving
+
+- Save file: `Application Support/HarvestHollow/save.json`, with a
+  `save.backup.json` written before each successful overwrite.
+- Autosave runs every 20 seconds and when the app leaves the foreground.
+- On launch the game simulates offline time, capped at 8 hours, so crops can finish
+  and animals can produce while the app is closed.
+- **Settings → Export code / Import** moves a base64 JSON save between devices.
+
+## Testing
+
+The test suite covers planting, growth, weather, harvesting, animal feeding and
+production, inventory, buying/selling, market multipliers, plot/pen unlocks, furniture
+placement, themes, quests, level-ups, offline catch-up, save round-trips, import/export
+and sprite integrity.
+
+```bash
+swift test
+# Executed 32 tests, with 0 failures
+```
+
+## Regenerating art assets
+
+```bash
+python3 Tools/make_icon.py          # docs/icon.png → app icon set
+python3 Tools/make_sprite_sheet.py  # docs/sprites.png from PixelArt.swift
+```
+
+Both scripts use only the Python standard library.
+
+## License
+
+MIT © 2026 yuanjing-sudo. See [LICENSE](LICENSE).
+
+---
+
+Made with care in the Hollow — SwiftUI + Swift, all the way down.

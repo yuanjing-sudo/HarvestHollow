@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# Generated Xcode project (run xcodegen in Apps/HarvestHollow)
+Apps/HarvestHollow/HarvestHollow.xcodeproj/
+
+# Xcode build products
+*.ipa
+*.dSYM
+*.xcarchive
+build/
+
+# Python helpers
+__pycache__/
+*.pyc
+
+# Local saves / scratch
+*.json
+!Apps/HarvestHollow/Resources/**/*.json
+!docs/**/*.json
+!**/Package.resolved

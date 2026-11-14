@@ -767,14 +767,13 @@ public final class GameEngine {
             return .failure("That piece does not fit there.")
         }
 
-        let newRect = CGRect(x: x, y: y, width: piece.width, height: piece.height)
         for placed in state.house.placed {
             guard let other = catalog.furniture(placed.itemID) else { continue }
-            let otherRect = CGRect(
-                x: placed.x, y: placed.y,
-                width: other.width, height: other.height
-            )
-            if newRect.intersects(otherRect) {
+            if overlaps(
+                x: x, y: y, width: piece.width, height: piece.height,
+                otherX: placed.x, otherY: placed.y,
+                otherWidth: other.width, otherHeight: other.height
+            ) {
                 return .failure("Something is already occupying that spot.")
             }
         }
@@ -815,14 +814,13 @@ public final class GameEngine {
             return .failure("The room ends there.")
         }
 
-        let newRect = CGRect(x: newX, y: newY, width: piece.width, height: piece.height)
         for other in state.house.placed where other.id != id {
             guard let otherPiece = catalog.furniture(other.itemID) else { continue }
-            let otherRect = CGRect(
-                x: other.x, y: other.y,
-                width: otherPiece.width, height: otherPiece.height
-            )
-            if newRect.intersects(otherRect) {
+            if overlaps(
+                x: newX, y: newY, width: piece.width, height: piece.height,
+                otherX: other.x, otherY: other.y,
+                otherWidth: otherPiece.width, otherHeight: otherPiece.height
+            ) {
                 return .failure("Something is already there.")
             }
         }
@@ -830,6 +828,18 @@ public final class GameEngine {
         state.house.placed[index].x = newX
         state.house.placed[index].y = newY
         return .success("Moved the \(piece.name).")
+    }
+
+    /// Integer grid overlap test, kept free of CoreGraphics so the core module
+    /// builds identically on Linux and Apple platforms.
+    private func overlaps(
+        x: Int, y: Int, width: Int, height: Int,
+        otherX: Int, otherY: Int, otherWidth: Int, otherHeight: Int
+    ) -> Bool {
+        x < otherX + otherWidth
+            && otherX < x + width
+            && y < otherY + otherHeight
+            && otherY < y + height
     }
 
     // MARK: - Quests & progression

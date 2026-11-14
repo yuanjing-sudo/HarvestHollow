@@ -173,6 +173,11 @@ public final class GameStore: ObservableObject {
            let tab = AppTab(rawValue: rawTab) {
             self.selectedTab = tab
         }
+        if let rawRoute = ProcessInfo.processInfo.environment["HARVEST_HOLLOW_START_TOWN_ROUTE"],
+           let route = TownRoute(rawValue: rawRoute) {
+            self.selectedTab = .town
+            self.townPath = [route]
+        }
         #endif
 
         bootstrap()

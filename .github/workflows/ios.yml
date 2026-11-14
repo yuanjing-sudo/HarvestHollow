@@ -59,6 +59,16 @@ jobs:
             xcrun simctl io "$UDID" screenshot "docs/screenshot-$tab.png"
           done
 
+          for route in fishing kitchen achievements almanac collection help; do
+            xcrun simctl terminate "$UDID" com.harvesthollow.game || true
+            SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
+            SIMCTL_CHILD_HARVEST_HOLLOW_START_TAB=town \
+            SIMCTL_CHILD_HARVEST_HOLLOW_START_TOWN_ROUTE="$route" \
+              xcrun simctl launch "$UDID" com.harvesthollow.game
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "docs/screenshot-$route.png"
+          done
+
       - name: Upload the screenshots
         uses: actions/upload-artifact@v4
         with:

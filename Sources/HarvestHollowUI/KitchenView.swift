@@ -210,7 +210,7 @@ public struct KitchenView: View {
             }
 
             CozySegmentedPicker(
-                items: [RecipeCategory?](arrayLiteral: nil) + RecipeCategory.allCases.map(Optional.some),
+                items: ([nil] as [RecipeCategory?]) + RecipeCategory.allCases.map(Optional.some),
                 selection: $category,
                 tint: HHTheme.terracotta,
                 icon: { $0?.icon ?? "square.grid.2x2.fill" },

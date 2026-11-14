@@ -534,6 +534,8 @@ public struct FoodBuff: Codable, Identifiable, Sendable, Equatable {
 
     public var id: String { "\(kind.rawValue)-\(name)" }
 
+    public var percent: Int { Int((magnitude * 100).rounded()) }
+
     public func isActive(at date: Date) -> Bool {
         expiresAt > date
     }
@@ -541,8 +543,6 @@ public struct FoodBuff: Codable, Identifiable, Sendable, Equatable {
     public func secondsRemaining(at date: Date) -> Double {
         max(0, expiresAt.timeIntervalSince(date))
     }
-
-    public var percent: Int { Int((magnitude * 100).rounded()) }
 }
 
 public struct RecipeDefinition: Identifiable, Sendable, Equatable {

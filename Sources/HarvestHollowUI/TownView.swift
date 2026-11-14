@@ -210,7 +210,7 @@ public struct TownView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(store.canClaimDailyGift ? CozyPrimaryButtonStyle() : CozySecondaryButtonStyle())
+                .buttonStyle(CozyPrimaryButtonStyle())
                 .disabled(!store.canClaimDailyGift)
                 .opacity(store.canClaimDailyGift ? 1 : 0.65)
             }

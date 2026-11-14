@@ -550,7 +550,6 @@ public struct WeatherDiorama: View {
         TimelineView(.animation(minimumInterval: 1.0 / 18.0)) { timeline in
             Canvas { context, size in
                 let time = timeline.date.timeIntervalSinceReferenceDate
-                let sky = HHTheme.headerGradient(timeOfDay: timeOfDay)
                 context.fill(Path(CGRect(origin: .zero, size: size)), with: .linearGradient(
                     Gradient(colors: skyColors),
                     startPoint: .zero,

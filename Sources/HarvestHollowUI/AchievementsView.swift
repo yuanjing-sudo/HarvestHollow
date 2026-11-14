@@ -105,7 +105,7 @@ public struct AchievementsView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(ready > 0 ? CozyPrimaryButtonStyle() : CozySecondaryButtonStyle())
+                .buttonStyle(CozyPrimaryButtonStyle())
                 .disabled(ready == 0)
                 .opacity(ready > 0 ? 1 : 0.55)
             }

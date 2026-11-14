@@ -272,7 +272,6 @@ public struct CollectionView: View {
 
     private func fishTile(_ fish: FishDefinition) -> some View {
         let discovered = store.isFishCaught(fish.id)
-        let count = store.fishCatchCount(fish.id)
         let best = store.bestWeight(forFish: fish.id)
         return collectionTile(
             spriteKey: fish.spriteKey,

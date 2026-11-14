@@ -202,7 +202,7 @@ public final class GameStore: ObservableObject {
                 offlineNotice = "\(days) days passed while the farm dozed. It is now day \(day) — \(weather.title.lowercased())."
 
             case .offlineProgress(let seconds, let days):
-                let hours = seconds / 3_600
+                let hours = Double(seconds) / 3_600
                 if offlineNotice == nil, hours >= 0.1 {
                     let timeText = hours >= 1
                         ? String(format: "%.1f hours", hours)

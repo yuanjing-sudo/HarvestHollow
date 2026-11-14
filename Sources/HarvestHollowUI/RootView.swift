@@ -190,12 +190,26 @@ public struct FarmHeaderView: View {
                 }
 
                 HStack(spacing: 10) {
-                    LevelBadge(
-                        level: state.level,
-                        progress: state.levelProgress,
-                        showXP: true
-                    )
-                    .padding(.horizontal, 9)
+                    HStack(spacing: 7) {
+                        LevelBadge(
+                            level: state.level,
+                            progress: state.levelProgress,
+                            showXP: false
+                        )
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Level \(state.level)")
+                                .font(.hhHeadline(11.5))
+                                .foregroundStyle(HHTheme.ink)
+                                .lineLimit(1)
+                            Text("\(state.xp)/\(state.xpForNextLevel) XP")
+                                .font(.hhCaption(8.5))
+                                .foregroundStyle(HHTheme.muted)
+                                .monospacedDigit()
+                                .lineLimit(1)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(
                         Capsule().fill(HHTheme.paper.opacity(0.78))

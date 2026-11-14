@@ -22,11 +22,22 @@ data-driven coloured squares — no PNG sprite atlases, no web views, and no Jav
 </p>
 
 <p align="center">
-  <img src="docs/screenshot-farm.png" width="320" alt="The Harvest Hollow farm screen running in the iOS simulator" />
+  <img src="docs/screenshot-farm.png" width="300" alt="The Harvest Hollow farm screen running in the iOS simulator" />
+  <img src="docs/screenshot-town.png" width="300" alt="The Hollowmere town hub with daily gift and places to visit" />
 </p>
 
 <p align="center">
   <em>The real app, captured from the iOS simulator by CI. Weather, levels and prices are live.</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-fishing.png" width="250" alt="The Hollow Pond fishing screen" />
+  <img src="docs/screenshot-kitchen.png" width="250" alt="The Cottage Kitchen recipe screen" />
+  <img src="docs/screenshot-almanac.png" width="250" alt="The Valley Almanac weather and calendar screen" />
+</p>
+
+<p align="center">
+  <em>Pond, kitchen and almanac: three corners of the town expansion, all drawn with SwiftUI Canvas.</em>
 </p>
 
 ![Harvest Hollow sprite library](docs/sprites.png)
@@ -36,9 +47,9 @@ data-driven coloured squares — no PNG sprite atlases, no web views, and no Jav
 | System | What you can do |
 | --- | --- |
 | **Farm** | 24 plots (6 unlocked), 9 crops, watering, fertilizing, multi-plant, multi-water, multi-harvest, growth stages and weather bonuses |
-| **Barn** | 8 pens (2 unlocked), 7 animals, adopt/rename/feed/collect, happiness, production timers, stored goods and two free cycles on adoption |
-| **Market** | Buy seeds, feed and fertilizer; buy furniture and house themes; daily price swings; comfort sale bonus; daily market order |
-| **Inventory** | Filterable satchel with seeds, crops, barn goods, supplies and furniture; quick plant, feed and sell actions |
+| **Barn** | 8 pens (2 unlocked), 7 animals, adopt/rename/feed/collect/pet, happiness, affection, production timers, stored goods and two free cycles on adoption |
+| **Market** | Buy seeds, feed, bait and fertilizer; buy furniture and house themes; daily price swings; comfort and mastery sale bonuses; daily market order |
+| **Inventory** | Filterable satchel with seeds, crops, barn goods, fish, dishes, supplies and furniture; quick plant, feed, eat and sell actions |
 | **House** | 14 furniture pieces, drag/arrow placement on a 12×8 room grid, 5 themes, comfort score and up to +25% market bonus |
 | **Quests** | 10-chapter story with automatic objective tracking and rewards, plus a daily order |
 | **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
@@ -159,7 +170,7 @@ HarvestHollow/
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 61 core simulation tests
+├── Tests/                     # 62 core simulation tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
 ├── Tools/                     # Reproducible icon + sprite-sheet generators
 └── docs/
@@ -220,7 +231,7 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 61 tests
+swift test                              # 62 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
 swift run harvesthollow validate        # check all 69 sprite grids
@@ -253,7 +264,7 @@ legacy-save migration, import/export and sprite integrity.
 
 ```bash
 swift test
-# Executed 61 tests, with 0 failures
+# Executed 62 tests, with 0 failures
 ```
 
 ## Regenerating art assets

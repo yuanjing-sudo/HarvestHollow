@@ -422,6 +422,32 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(decoded.version, GameConstants.saveVersion)
     }
 
+    func testOldAnimalWithoutAffectionFieldsStillLoads() throws {
+        var state = GameState.newGame(now: fixedDate, seed: 21)
+        state.pens[0].unlocked = true
+        state.pens[0].animal = animal()
+        let data = try SaveCodec.encode(state, savedAt: fixedDate)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var stateObject = try XCTUnwrap(object["state"] as? [String: Any])
+        var pens = try XCTUnwrap(stateObject["pens"] as? [[String: Any]])
+        var firstPen = pens[0]
+        var animalObject = try XCTUnwrap(firstPen["animal"] as? [String: Any])
+        animalObject.removeValue(forKey: "affection")
+        animalObject.removeValue(forKey: "lastPettedAt")
+        animalObject.removeValue(forKey: "petCount")
+        firstPen["animal"] = animalObject
+        pens[0] = firstPen
+        stateObject["pens"] = pens
+        object["state"] = stateObject
+        let stripped = try JSONSerialization.data(withJSONObject: object)
+        let decoded = try SaveCodec.decode(stripped)
+        let restored = try XCTUnwrap(decoded.pens[0].animal)
+        XCTAssertEqual(restored.name, "Pip")
+        XCTAssertEqual(restored.affection, 45)
+        XCTAssertNil(restored.lastPettedAt)
+        XCTAssertEqual(restored.petCount, 0)
+    }
+
     // MARK: - Sprites and content integrity
 
     func testEveryFishAndDishHasAValidDetailedSprite() {

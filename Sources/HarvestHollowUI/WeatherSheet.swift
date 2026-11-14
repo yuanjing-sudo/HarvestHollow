@@ -92,7 +92,7 @@ public struct WeatherSheet: View {
                 }
 
                 let history = Array(state.activities.weatherHistory.suffix(7))
-                if !history.isEmpty {
+                if history.count > 1 {
                     CozyCard {
                         VStack(alignment: .leading, spacing: 9) {
                             SectionHeader(

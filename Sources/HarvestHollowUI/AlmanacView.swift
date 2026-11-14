@@ -147,7 +147,7 @@ public struct AlmanacView: View {
                 }
 
                 let history = Array(state.activities.weatherHistory.suffix(7))
-                if !history.isEmpty {
+                if history.count > 1 {
                     MiniBarChart(
                         values: history.map { $0.growthMultiplier * 100 },
                         labels: history.map { $0.emoji },
@@ -164,6 +164,19 @@ public struct AlmanacView: View {
                             .font(.system(size: 10, weight: .heavy, design: .rounded))
                             .foregroundStyle(HHTheme.forest)
                     }
+                } else {
+                    HStack(spacing: 7) {
+                        Image(systemName: "chart.bar.xaxis")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(HHTheme.forest)
+                        Text("The seven-day weather ledger starts filling tomorrow.")
+                            .font(.hhCaption(10.5))
+                            .foregroundStyle(HHTheme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        TagChip("\(Int(state.weather.growthMultiplier * 100))% growth", tint: HHTheme.forest)
+                    }
+                    .padding(.top, 2)
                 }
 
                 HStack(spacing: 6) {

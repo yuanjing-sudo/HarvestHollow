@@ -10,6 +10,7 @@ public struct FishingView: View {
     @State private var lastCatchID: String?
     @State private var lastCatchWeight: Double = 0
     @State private var catchPulse = false
+    @State private var catchTask: Task<Void, Never>?
     @State private var showRarityGuide = false
 
     private var state: GameState { store.state }
@@ -57,6 +58,9 @@ public struct FishingView: View {
             RarityGuideSheet()
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
+        }
+        .onDisappear {
+            catchTask?.cancel()
         }
     }
 
@@ -180,12 +184,22 @@ public struct FishingView: View {
     }
 
     private func cast() {
+        let previousID = store.state.activities.fishing.recentCatches.first?.id
         store.castLine()
-        guard let record = store.state.activities.fishing.recentCatches.first else { return }
+        guard let record = store.state.activities.fishing.recentCatches.first,
+              record.id != previousID else { return }
         lastCatchID = record.fishID
         lastCatchWeight = record.weight
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
             catchPulse = true
+        }
+        catchTask?.cancel()
+        catchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                catchPulse = false
+            }
         }
     }
 

@@ -116,6 +116,11 @@ public final class GameStore: ObservableObject {
         self.state = initialState
         self.engine = GameEngine(state: initialState)
         self.showWelcome = !initialState.settings.hasSeenWelcome
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["HARVEST_HOLLOW_SKIP_WELCOME"] == "1" {
+            self.showWelcome = false
+        }
+        #endif
 
         bootstrap()
     }

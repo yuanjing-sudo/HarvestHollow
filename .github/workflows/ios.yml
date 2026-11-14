@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build the iOS app
+    name: Build and launch the iOS app
     runs-on: macos-15
 
     steps:
@@ -29,5 +29,33 @@ jobs:
             -scheme HarvestHollow \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Boot a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ { print $2; exit }')
+          if [ -z "$UDID" ]; then
+            echo "No available iPhone simulator" >&2
+            exit 1
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Launch the game and capture a screenshot
+        run: |
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" \
+            Apps/HarvestHollow/build/Build/Products/Debug-iphonesimulator/HarvestHollow.app
+          SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
+            xcrun simctl launch "${{ steps.sim.outputs.udid }}" com.harvesthollow.game
+          sleep 6
+          xcrun simctl io "${{ steps.sim.outputs.udid }}" screenshot docs/screenshot-farm.png
+
+      - name: Upload the screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: harvest-hollow-screenshot
+          path: docs/screenshot-farm.png

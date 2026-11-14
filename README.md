@@ -2,6 +2,9 @@
 
 **A cozy 2D farming game written entirely in Swift.**
 
+[![Core tests](https://github.com/yuanjing-sudo/HarvestHollow/actions/workflows/ci.yml/badge.svg)](https://github.com/yuanjing-sudo/HarvestHollow/actions/workflows/ci.yml)
+[![iOS build](https://github.com/yuanjing-sudo/HarvestHollow/actions/workflows/ios.yml/badge.svg)](https://github.com/yuanjing-sudo/HarvestHollow/actions/workflows/ios.yml)
+
 Harvest Hollow is a complete, playable farming loop: till the field, plant and water
 crops, raise pixel-art animals, sell at a living market, decorate the farmhouse, follow
 a ten-chapter story, and level up a little valley farm. Every visual is drawn with
@@ -14,6 +17,14 @@ views, and no JavaScript.
 
 <p align="center">
   <em>Feed the soil, fill the barn, make the Hollow feel like home.</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-farm.png" width="320" alt="The Harvest Hollow farm screen running in the iOS simulator" />
+</p>
+
+<p align="center">
+  <em>The real app, captured from the iOS simulator by CI. Weather, levels and prices are live.</em>
 </p>
 
 ![Harvest Hollow sprite library](docs/sprites.png)

@@ -33,10 +33,12 @@ public struct World3DView: View {
         resolved.showGrid = showGrid
         resolved.showAxes = showAxes
         resolved.outlineFaces = outlineFaces
-        resolved.maximumFaces = 80_000
+        resolved.maximumFaces = 50_000
         // Use a coarser face LOD while the user is dragging or pinching, then
-        // draw the full detail as soon as the gesture settles.
-        resolved.minimumFaceArea = isInteracting ? 1.2 : 0.35
+        // draw the full detail as soon as the gesture settles. The per-object
+        // budget keeps every landmark visible even when the barn is close.
+        resolved.minimumFaceArea = isInteracting ? 1.2 : 0.4
+        resolved.perObjectFaceLimit = camera.distance > 26 ? 900 : 0
         return resolved
     }
 

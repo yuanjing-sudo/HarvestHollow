@@ -18,7 +18,9 @@ public final class GameEngine {
         catalog: GameCatalog = .standard,
         clock: @escaping () -> Date = Date.init
     ) {
-        self.state = state
+        var normalized = state
+        _ = normalized.economy.synchronize(level: normalized.level)
+        self.state = normalized
         self.catalog = catalog
         self.clock = clock
     }
@@ -157,6 +159,33 @@ public final class GameEngine {
                 catalog: catalog,
                 rng: &$0
             )
+        }
+
+        let inputs = EconomyInputs(state: state)
+        let report = withRNG { rng in
+            state.economy.advanceDay(inputs, rng: &rng)
+        }
+        if report.tierChanged || !report.unlockedFactors.isEmpty {
+            let names = report.unlockedFactors.prefix(3)
+                .map(\.shortTitle)
+                .joined(separator: ", ")
+            let detail = report.unlockedFactors.isEmpty
+                ? report.tier.blurb
+                : "Unlocked \(names)"
+            emit(.economyEvent(
+                day: report.day,
+                title: "Valley ledger · \(report.tier.title)",
+                detail: detail,
+                positive: true
+            ))
+        }
+        if let event = report.event {
+            emit(.economyEvent(
+                day: event.day,
+                title: event.title,
+                detail: event.detail,
+                positive: event.impact >= 0
+            ))
         }
     }
 
@@ -924,6 +953,18 @@ public final class GameEngine {
             let bonus = 40 * state.level
             state.coins += bonus
             emit(.leveledUp(level: state.level, coinBonus: bonus))
+            let unlocked = state.economy.synchronize(level: state.level)
+            if !unlocked.isEmpty {
+                let names = unlocked.prefix(4)
+                    .map(\.shortTitle)
+                    .joined(separator: ", ")
+                emit(.economyEvent(
+                    day: state.day,
+                    title: "The valley ledger deepens",
+                    detail: "New factors at level \(state.level): \(names)",
+                    positive: true
+                ))
+            }
         }
     }
 
@@ -953,6 +994,76 @@ public final class GameEngine {
             awardXP(quest.reward.xp)
             safety += 1
         }
+    }
+
+    // MARK: - Valley economy
+
+    @discardableResult
+    public func setEconomyTaxRate(_ value: Double) -> Bool {
+        guard state.economy.setTaxRate(value) else { return false }
+        emit(.message("Valley tax rate set to \(Int((state.economy.taxRate * 100).rounded()))%."))
+        return true
+    }
+
+    @discardableResult
+    public func setEconomySubsidyRate(_ value: Double) -> Bool {
+        guard state.economy.setSubsidyRate(value) else { return false }
+        emit(.message("Farm subsidy rate set to \(Int((state.economy.subsidyRate * 100).rounded()))%."))
+        return true
+    }
+
+    @discardableResult
+    public func setEconomyPublicSpending(_ value: Double) -> Bool {
+        guard state.economy.setPublicSpending(value) else { return false }
+        emit(.message("Public spending set to \(Int((state.economy.publicSpending * 100).rounded()))% of output."))
+        return true
+    }
+
+    @discardableResult
+    public func setEconomyTariffRate(_ value: Double) -> Bool {
+        guard state.economy.setTariffRate(value) else { return false }
+        emit(.message("Tariff rate set to \(Int((state.economy.tariffRate * 100).rounded()))%."))
+        return true
+    }
+
+    @discardableResult
+    public func setEconomyInterestRate(_ value: Double) -> Bool {
+        guard state.economy.setInterestRate(value) else { return false }
+        emit(.message("Valley policy rate set to \(Int((state.economy.interestRate * 100).rounded()))%."))
+        return true
+    }
+
+    @discardableResult
+    public func investInEconomy(_ investment: EconomyInvestment) -> Bool {
+        guard state.coins >= investment.cost else { return false }
+        guard state.economy.invest(investment) else { return false }
+        state.coins -= investment.cost
+        emit(.message("Invested \(investment.cost) coins in \(investment.title)."))
+        return true
+    }
+
+    @discardableResult
+    public func takeEconomyLoan(amount: Double, purpose: String = "Farm investment") -> Bool {
+        guard state.coins >= 0,
+              let loan = state.economy.takeLoan(
+                amount: amount,
+                purpose: purpose,
+                day: state.day
+              ) else { return false }
+        state.coins += Int(amount.rounded())
+        emit(.message("Borrowed \(Int(loan.principal)) coins at \(Int((loan.annualRate * 100).rounded()))% annual interest."))
+        return true
+    }
+
+    @discardableResult
+    public func repayEconomyLoan(id: UUID, amount: Double) -> Bool {
+        let payment = min(amount, Double(state.coins))
+        guard payment > 0 else { return false }
+        let paid = state.economy.repayLoan(id: id, amount: payment)
+        guard paid > 0 else { return false }
+        state.coins -= Int(paid.rounded())
+        emit(.message("Repaid \(Int(paid.rounded())) coins of valley debt."))
+        return true
     }
 
     // MARK: - Settings & reset

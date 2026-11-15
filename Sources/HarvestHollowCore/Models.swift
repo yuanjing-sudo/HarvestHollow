@@ -7,7 +7,7 @@ public enum GameConstants {
     public static let dayLength: Double = 240
     /// Progress is simulated for at most eight hours while the game is closed.
     public static let maxOfflineSeconds: Double = 8 * 60 * 60
-    public static let saveVersion = 3
+    public static let saveVersion = 4
 
     public static let farmPlotCount = 24
     public static let startingPlots = 6
@@ -100,6 +100,7 @@ public struct GameState: Codable, Sendable {
     public var flags: GameFlags
     public var activities: ActivityState
     public var arcade: ArcadeState
+    public var economy: ValleyEconomy
 
     public static func newGame(
         now: Date = Date(),
@@ -142,7 +143,8 @@ public struct GameState: Codable, Sendable {
             settings: GameSettings(),
             flags: GameFlags(),
             activities: ActivityState(),
-            arcade: ArcadeState()
+            arcade: ArcadeState(),
+            economy: ValleyEconomy(level: 1)
         )
 
         state.weather = Weather.roll(using: &rng)
@@ -211,6 +213,7 @@ extension GameState {
         case flags
         case activities
         case arcade
+        case economy
     }
 
     /// Version-tolerant decoding lets farms saved before the town expansion keep
@@ -244,6 +247,8 @@ extension GameState {
         activities = try container.decodeIfPresent(ActivityState.self, forKey: .activities)
             ?? ActivityState(weather: weather)
         arcade = try container.decodeIfPresent(ArcadeState.self, forKey: .arcade) ?? ArcadeState()
+        economy = try container.decodeIfPresent(ValleyEconomy.self, forKey: .economy)
+            ?? ValleyEconomy(level: level)
         version = GameConstants.saveVersion
     }
 
@@ -273,6 +278,7 @@ extension GameState {
         try container.encode(flags, forKey: .flags)
         try container.encode(activities, forKey: .activities)
         try container.encode(arcade, forKey: .arcade)
+        try container.encode(economy, forKey: .economy)
     }
 }
 
@@ -570,6 +576,7 @@ public enum GameEvent: Equatable, Sendable {
     case petAnimal(name: String, affection: Double)
     case masteryUp(cropID: String, level: Int)
     case meadowRunCompleted(level: Int, score: Int, stars: Int, coins: Int, xp: Int)
+    case economyEvent(day: Int, title: String, detail: String, positive: Bool)
     case message(String)
 }
 

@@ -290,6 +290,7 @@ public struct VoxelRenderOptions: Hashable, Sendable {
     public var axisLength: Double
     public var minimumDepth: Double
     public var maximumFaces: Int
+    public var perObjectFaceLimit: Int
     public var minimumFaceArea: Double
 
     public init(
@@ -306,6 +307,7 @@ public struct VoxelRenderOptions: Hashable, Sendable {
         axisLength: Double = 5,
         minimumDepth: Double = 0.15,
         maximumFaces: Int = 30_000,
+        perObjectFaceLimit: Int = 0,
         minimumFaceArea: Double = 0.16
     ) {
         self.backgroundTop = backgroundTop
@@ -321,6 +323,7 @@ public struct VoxelRenderOptions: Hashable, Sendable {
         self.axisLength = axisLength
         self.minimumDepth = minimumDepth
         self.maximumFaces = maximumFaces
+        self.perObjectFaceLimit = max(0, perObjectFaceLimit)
         self.minimumFaceArea = max(0, minimumFaceArea)
     }
 
@@ -456,8 +459,12 @@ public enum VoxelRenderer {
                 )
             }
 
+            // Project this object's faces first. When a per-object budget is
+            // set, keep its largest screen-space faces so a detailed barn
+            // cannot starve every smaller object in the same scene.
+            var objectFaces: [(points: [Vec2], depth: Double, color: VoxelColor, material: VoxelMaterial, area: Double)] = []
+            objectFaces.reserveCapacity(min(modelFaces.count, 2_048))
             for face in modelFaces {
-                if faces.count >= options.maximumFaces { break }
                 let rotation = object.rotationY
                 let anchor = model.anchor
                 let worldCorners = face.corners.map { corner -> Vec3 in
@@ -484,19 +491,29 @@ public enum VoxelRenderer {
                     totalDepth += result.depth
                 }
                 guard visible, projected.count == 4 else { continue }
+                let area = options.minimumFaceArea > 0 ? polygonArea(projected) : 0
                 if options.minimumFaceArea > 0 {
-                    let area = polygonArea(projected)
                     guard area >= options.minimumFaceArea else { continue }
                 }
                 let depth = totalDepth / 4
                 let shade = light.shade(face.color, normal: normal, material: face.material)
+                objectFaces.append((projected, depth, shade, face.material, area))
+            }
+
+            if options.perObjectFaceLimit > 0, objectFaces.count > options.perObjectFaceLimit {
+                objectFaces.sort { $0.area > $1.area }
+                objectFaces.removeLast(objectFaces.count - options.perObjectFaceLimit)
+            }
+
+            for entry in objectFaces {
+                guard faces.count < options.maximumFaces else { break }
                 faces.append(
                     VoxelRenderFace(
                         id: faceID,
-                        points: projected,
-                        depth: depth,
-                        color: shade,
-                        material: face.material,
+                        points: entry.points,
+                        depth: entry.depth,
+                        color: entry.color,
+                        material: entry.material,
                         objectID: object.id
                     )
                 )

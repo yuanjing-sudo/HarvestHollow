@@ -10,9 +10,10 @@ crops, raise pixel-art animals, sell at a living market, decorate the farmhouse,
 a ten-chapter story, and level up a little valley farm. The town expansion adds a
 fishing pond, a cottage kitchen, an achievement journal, a seasonal almanac, a
 collection book, daily gifts, crop mastery, animal affection, a weather forecast, and
-full backward-compatible saves. Two new tabs add a complete side-scrolling 2D arcade
-called **Meadow Dash** and **Hollow 3D**, an orbitable voxel diorama of the whole farm
-with an explicit XYZ axis, camera presets, object picking and 74 sculpted models.
+full backward-compatible saves. Three new tabs add a complete side-scrolling 2D arcade
+called **Meadow Dash**, a 29-factor **Valley Ledger** economy that unlocks in tiers as
+you level, and **Hollow 3D**, an orbitable voxel diorama of the whole farm with an
+explicit XYZ axis, camera presets, object picking and 74 sculpted models.
 Every visual is drawn with SwiftUI `Canvas` from data-driven coloured squares — no PNG
 sprite atlases, no web views, no SceneKit, and no JavaScript.
 
@@ -57,6 +58,7 @@ sprite atlases, no web views, no SceneKit, and no JavaScript.
 | **Quests** | 10-chapter story with automatic objective tracking and rewards, plus a daily order |
 | **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
 | **Meadow Dash** | A 2D auto-runner with 16 levels, 6 biomes, jumping, double jumps, dashing, sliding, hearts, combos, apples, clovers and persistent best scores |
+| **Valley Ledger** | A 29-factor linked economy: soil, weather, yields, livestock, labour, population, demand, prices, inflation, credit, policy, taxes, trade, wellbeing, pollution, research, AI firms, elections and disasters, all unlocking in six tiers |
 | **Hollow 3D** | A pure-Swift voxel diorama with XYZ axes, a depth-sorted renderer, orbit/pinch camera, six camera presets, object picking, LOD and 74 generated models |
 | **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs |
 | **Cooking** | 18 recipes, 5 categories, ingredient checking, a pantry, sellable dishes and timed growth/market/fishing buffs |
@@ -105,6 +107,30 @@ alone is built from **2,111 individual voxels**. Buildings, trees, animals, crop
 props and characters all use the same `VoxelModel` format, and the 3D tab populates
 its diorama directly from the current save: plots, planted crops, pens, residents,
 weather, season and time of day all affect the scene.
+
+### The Valley Ledger
+
+**Valley Ledger** is the economy page — and a real daily simulation behind it. It
+starts deliberately small: at level 1 only soil, crop yields, weather, consumer
+demand, market prices and player progression are visible. New tiers open at levels 4,
+8, 12, 16 and 20, layering on livestock, labour, population, credit, infrastructure,
+taxation, trade, elections, research, inequality, pollution, AI agents and global
+shocks. Locked factors stay visible with their unlock level so the next layer is
+always legible.
+
+Every factor sits in a dependency web rather than a slider bank. Weather and soil set
+yields; yields, firm output and imports set supply; household demand, exports and
+confidence set prices; prices feed wages, inflation, interest, migration and policy;
+policy changes services, taxes, health, education, pollution and the next day's soil.
+The page shows the full chain, from **GDP, prices, jobs and happiness** down to active
+loans, firm moods, elections and an event history with long-run consequences.
+
+Player levers include tax, subsidy, public spending, tariffs, the policy rate,
+eight investment programmes (irrigation, clean energy, roads, schools, clinics,
+research, cleanup and digital networks), credit and repayment. Loan interest compounds
+daily, credit scores drift with debt and unemployment, weak firms can fail, and
+elections can change the ruling party's policy biases. Saves migrate from older
+versions and store the entire ledger, including AI citizens and firms.
 
 ### The pond
 
@@ -163,6 +189,9 @@ animal is a hand-authored grid of coloured cells, not an emoji or an image file.
   ready. The gift cycles through seven days and builds a streak.
 - **Read the sky:** tap the weather chip in the header or open the Almanac. Tomorrow's
   weather is always shown before it arrives.
+- **Run the valley:** open **Valley** to read the ledger. Factor tiles start small and
+  unlock in tiers; policy, investment and borrowing open at level 8. Watch how a
+  drought, a tax change, or a new school travels through prices and wellbeing.
 
 The in-game day lasts four real minutes. A long break rolls days forward and catches
 up crops and animal production for up to eight hours.
@@ -183,6 +212,11 @@ HarvestHollow/
 │   │   ├── Catalog.swift      # Crops, animals, furniture, themes, quests, items
 │   │   ├── Engine.swift       # Tick loop, actions, validation, events, progression
 │   │   ├── Arcade.swift       # Meadow Dash levels, physics, scoring and career
+│   │   ├── EconomyModels.swift # Tiers, 29-factor catalogue, loans, firms, events
+│   │   ├── ValleyEconomy.swift # Persistent ledger, derived values and factor readings
+│   │   ├── EconomySimulation.swift # Daily linked simulation and reporting
+│   │   ├── EconomyEvents.swift # Firms, elections, random shocks and consequences
+│   │   ├── EconomyActions.swift # Policy, investment and credit actions
 │   │   ├── VoxelGeometry.swift # Vec math, voxel models, faces and builders
 │   │   ├── VoxelRenderer.swift # Orbit camera, culling, lighting, picking and LOD
 │   │   ├── VoxelModelLibrary.swift # Model codec, inspector and face cache
@@ -205,6 +239,8 @@ HarvestHollow/
 │   │   ├── CollectionView.swift
 │   │   ├── HelpView.swift
 │   │   ├── ArcadeView.swift   # Interactive 2D Meadow Dash page
+│   │   ├── EconomyView.swift  # Valley Ledger dashboard, policies and credit
+│   │   ├── EconomyComponents.swift # Sparklines, factor tiles, detail and guide
 │   │   ├── World3DView.swift  # Interactive XYZ voxel farm page
 │   │   ├── WeatherSheet.swift
 │   │   ├── InventorySheet.swift
@@ -215,7 +251,7 @@ HarvestHollow/
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 76 core simulation and voxel/arcade tests
+├── Tests/                     # 85 core simulation, economy and voxel/arcade tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
 ├── Tools/                     # Icon, sprite-sheet and voxel-model generators
 └── docs/
@@ -276,7 +312,7 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 76 tests
+swift test                              # 85 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
 swift run harvesthollow validate        # check all 69 sprite grids
@@ -312,7 +348,7 @@ the arcade career.
 
 ```bash
 swift test
-# Executed 76 tests, with 0 failures
+# Executed 85 tests, with 0 failures
 ```
 
 ## Regenerating art assets

@@ -20,6 +20,7 @@ public enum AppTab: String, CaseIterable, Identifiable {
     case town
     case quests
     case arcade
+    case economy
     case world
 
     public var id: String { rawValue }
@@ -33,6 +34,7 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .town: return "Town"
         case .quests: return "Quests"
         case .arcade: return "Meadow Dash"
+        case .economy: return "Valley Ledger"
         case .world: return "Hollow 3D"
         }
     }
@@ -46,6 +48,7 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .town: return "building.columns.fill"
         case .quests: return "checklist"
         case .arcade: return "figure.run"
+        case .economy: return "chart.line.uptrend.xyaxis"
         case .world: return "cube.fill"
         }
     }
@@ -56,6 +59,7 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .quests: return "Quests"
         case .town: return "Town"
         case .arcade: return "Play"
+        case .economy: return "Valley"
         case .world: return "3D"
         default: return title
         }
@@ -343,6 +347,15 @@ public final class GameStore: ObservableObject {
                     tint: HHTheme.forest
                 )
                 playFeedback(strong: stars >= 2)
+
+            case .economyEvent(_, let title, let detail, let positive):
+                enqueueToast(
+                    title: title,
+                    detail: detail,
+                    icon: positive ? "chart.line.uptrend.xyaxis" : "exclamationmark.triangle.fill",
+                    tint: positive ? HHTheme.forest : HHTheme.terracotta
+                )
+                playFeedback(strong: !positive)
 
             case .dayAdvanced(let day, let weather):
                 enqueueToast(
@@ -806,6 +819,66 @@ public final class GameStore: ObservableObject {
         handle(engine.drainEvents())
         saveNow()
         return rewards
+    }
+
+    // MARK: Economy actions
+
+    @discardableResult
+    public func setEconomyTaxRate(_ value: Double) -> Bool {
+        finishEconomyAction(engine.setEconomyTaxRate(value))
+    }
+
+    @discardableResult
+    public func setEconomySubsidyRate(_ value: Double) -> Bool {
+        finishEconomyAction(engine.setEconomySubsidyRate(value))
+    }
+
+    @discardableResult
+    public func setEconomyPublicSpending(_ value: Double) -> Bool {
+        finishEconomyAction(engine.setEconomyPublicSpending(value))
+    }
+
+    @discardableResult
+    public func setEconomyTariffRate(_ value: Double) -> Bool {
+        finishEconomyAction(engine.setEconomyTariffRate(value))
+    }
+
+    @discardableResult
+    public func setEconomyInterestRate(_ value: Double) -> Bool {
+        finishEconomyAction(engine.setEconomyInterestRate(value))
+    }
+
+    @discardableResult
+    public func investInEconomy(_ investment: EconomyInvestment) -> Bool {
+        finishEconomyAction(engine.investInEconomy(investment))
+    }
+
+    @discardableResult
+    public func takeEconomyLoan(amount: Double) -> Bool {
+        finishEconomyAction(engine.takeEconomyLoan(amount: amount))
+    }
+
+    @discardableResult
+    public func repayEconomyLoan(id: UUID, amount: Double) -> Bool {
+        finishEconomyAction(engine.repayEconomyLoan(id: id, amount: amount))
+    }
+
+    @discardableResult
+    private func finishEconomyAction(_ success: Bool) -> Bool {
+        state = engine.state
+        handle(engine.drainEvents())
+        if success {
+            saveNow()
+            playFeedback()
+        } else {
+            enqueueToast(
+                title: "The ledger resists",
+                detail: "Raise your level, repay debt, or check your coin balance.",
+                icon: "lock.fill",
+                tint: HHTheme.muted
+            )
+        }
+        return success
     }
 
     public func pet(penID: Int) {

@@ -126,6 +126,8 @@ public struct RootView: View {
             QuestsView()
         case .arcade:
             ArcadeView()
+        case .economy:
+            EconomyView()
         case .world:
             World3DView()
         }

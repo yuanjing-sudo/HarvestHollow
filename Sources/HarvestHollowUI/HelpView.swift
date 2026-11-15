@@ -208,6 +208,23 @@ public struct HelpView: View {
                 ]
             ),
             HelpTopic(
+                id: "economy",
+                icon: "chart.line.uptrend.xyaxis",
+                tint: HHTheme.forest,
+                title: "The Valley Ledger",
+                summary: "A living economy that grows more complex as you level.",
+                bullets: [
+                    "Level 1 shows only the basics: soil, crops, weather, demand, prices, and your progress.",
+                    "New factors unlock at levels 4, 8, 12, 16, and 20.",
+                    "Soil and weather feed yields; yields and imports feed supply; supply and demand set prices.",
+                    "Prices feed wages, confidence, interest, migration, and public policy.",
+                    "At level 8 you can set taxes, subsidies, spending, tariffs, and the policy rate.",
+                    "Eight investments and credit let you reshape the valley; debt compounds daily.",
+                    "AI firms hire, invest, pollute, and can fail. Elections change policy biases.",
+                    "Every shock is recorded in the ledger and can echo for many days."
+                ]
+            ),
+            HelpTopic(
                 id: "saving",
                 icon: "externaldrive.fill",
                 tint: HHTheme.muted,

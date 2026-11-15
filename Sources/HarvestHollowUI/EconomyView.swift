@@ -21,6 +21,7 @@ public struct EconomyView: View {
             VStack(spacing: 14) {
                 header
                 pulseGrid
+                dailyReportCard
                 unlockBanner
                 if let report = economy.lastReport, !report.warnings.isEmpty {
                     warningCard(report)
@@ -216,6 +217,67 @@ public struct EconomyView: View {
         }
     }
 
+    // MARK: Daily report
+
+    private var dailyReportCard: some View {
+        CozyCard(padding: 13) {
+            if let report = economy.lastReport {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 7) {
+                        Image(systemName: report.event?.kind.icon ?? "newspaper.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(report.event?.kind.isPositive == false ? HHTheme.terracotta : HHTheme.forest)
+                        Text(report.headline)
+                            .font(.hhHeadline(14))
+                            .foregroundStyle(HHTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                        Text("DAY \(report.day)")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                            .foregroundStyle(HHTheme.muted)
+                    }
+                    Text(report.summary)
+                        .font(.hhCaption(11))
+                        .foregroundStyle(HHTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let event = report.event {
+                        Text(event.detail)
+                            .font(.hhCaption(10))
+                            .foregroundStyle(HHTheme.ink.opacity(0.78))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack(spacing: 8) {
+                        LedgerMiniStat(
+                            title: "DEMAND",
+                            value: "\(Int(report.demand))",
+                            tint: HHTheme.terracotta
+                        )
+                        LedgerMiniStat(
+                            title: "SUPPLY",
+                            value: "\(Int(report.supply))",
+                            tint: HHTheme.sky
+                        )
+                        LedgerMiniStat(
+                            title: "BUDGET",
+                            value: "\(report.governmentBalance >= 0 ? "+" : "")\(Int(report.governmentBalance))c",
+                            tint: report.governmentBalance >= 0 ? HHTheme.forest : HHTheme.terracotta
+                        )
+                    }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "sunrise.fill")
+                        .foregroundStyle(HHTheme.goldDeep)
+                    Text("The first ledger report arrives after the next in-game morning. Plant, water, and watch the pulse.")
+                        .font(.hhCaption(11))
+                        .foregroundStyle(HHTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
     // MARK: Unlocks & warnings
 
     private var unlockBanner: some View {
@@ -298,7 +360,7 @@ public struct EconomyView: View {
                     .foregroundStyle(HHTheme.muted)
             }
             ForEach(EconomyFactorCategory.allCases) { category in
-                VStack(alignment: .leading, spacing: 7) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 7) {
                         Image(systemName: category.icon)
                             .font(.system(size: 13, weight: .bold))
@@ -307,11 +369,14 @@ public struct EconomyView: View {
                             .font(.hhHeadline(15))
                             .foregroundStyle(HHTheme.ink)
                         Spacer(minLength: 0)
-                        Text(category.blurb)
+                        Text("\(economy.readings(in: category).filter(\.isUnlocked).count)/\(economy.readings(in: category).count)")
                             .font(.hhCaption(10))
                             .foregroundStyle(HHTheme.muted)
-                            .lineLimit(1)
                     }
+                    Text(category.blurb)
+                        .font(.hhCaption(10))
+                        .foregroundStyle(HHTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                     LazyVGrid(
                         columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
                         spacing: 8

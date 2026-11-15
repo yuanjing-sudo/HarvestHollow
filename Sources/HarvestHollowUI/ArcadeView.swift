@@ -107,7 +107,9 @@ public struct ArcadeView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
                         Text("Meadow Dash")
-                            .font(.hhTitle(25))
+                            .font(.hhTitle(23))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .foregroundStyle(HHTheme.ink)
                         Text("2D")
                             .font(.system(size: 9, weight: .black, design: .rounded))

@@ -36,7 +36,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var target: Vec3 {
         switch self {
-        case .overview: return Vec3(0, 3.1, 1)
+        case .overview: return Vec3(0, 1.0, 2)
         case .barn: return Vec3(-6, 2.3, -6)
         case .animals: return Vec3(9, 1.5, 4)
         case .fields: return Vec3(-7, 1.2, 11)
@@ -58,7 +58,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var pitch: Double {
         switch self {
-        case .overview: return 0.52
+        case .overview: return 0.62
         case .barn: return 0.28
         case .animals: return 0.34
         case .fields: return 0.3
@@ -69,7 +69,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var distance: Double {
         switch self {
-        case .overview: return 34
+        case .overview: return 56
         case .barn: return 14
         case .animals: return 16
         case .fields: return 17
@@ -78,12 +78,21 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    public var fieldOfView: Double {
+        switch self {
+        case .overview: return 1.2
+        case .animals, .fields: return 1.0
+        case .barn, .house, .pond: return 0.95
+        }
+    }
+
     public func camera() -> VoxelCamera {
         VoxelCamera(
             target: target,
             yaw: yaw,
             pitch: pitch,
-            distance: distance
+            distance: distance,
+            fieldOfView: fieldOfView
         )
     }
 }

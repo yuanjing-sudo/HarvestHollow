@@ -19,6 +19,7 @@ public struct World3DView: View {
     @State private var outlineFaces = true
     @State private var showLibrary = false
     @State private var showDetails = false
+    @State private var isInteracting = false
     @State private var faceCache = VoxelFaceCache()
 
     public init() {}
@@ -32,7 +33,10 @@ public struct World3DView: View {
         resolved.showGrid = showGrid
         resolved.showAxes = showAxes
         resolved.outlineFaces = outlineFaces
-        resolved.minimumFaceArea = 0.2
+        resolved.maximumFaces = 80_000
+        // Use a coarser face LOD while the user is dragging or pinching, then
+        // draw the full detail as soon as the gesture settles.
+        resolved.minimumFaceArea = isInteracting ? 1.2 : 0.35
         return resolved
     }
 
@@ -116,9 +120,12 @@ public struct World3DView: View {
                     HStack(spacing: 6) {
                         TagChip("\(world.objectCount) objects", icon: "cube.transparent", tint: Color(hex: "4F7FA8"))
                         TagChip("\(world.totalVoxels.formatted()) voxels", icon: "square.grid.3x3.fill", tint: HHTheme.forest)
-                        TagChip("1 voxel = 10 cm", icon: "ruler", tint: HHTheme.terracotta)
                     }
                     .padding(.top, 2)
+                    Text("One voxel is ten centimetres. Select any object to inspect its coordinates.")
+                        .font(.hhCaption(10.5))
+                        .foregroundStyle(HHTheme.muted.opacity(0.9))
+                        .padding(.top, 1)
                 }
                 Spacer(minLength: 0)
             }
@@ -184,6 +191,9 @@ public struct World3DView: View {
                 },
                 onCameraMoved: {
                     activePreset = nil
+                },
+                onInteractionChanged: { interacting in
+                    isInteracting = interacting
                 }
             )
             .frame(height: 492)
@@ -476,6 +486,7 @@ private struct WorldSceneCanvas: View {
     let faceCache: VoxelFaceCache
     let onSelect: (VoxelRenderAnchor?) -> Void
     let onCameraMoved: () -> Void
+    let onInteractionChanged: (Bool) -> Void
 
     @State private var previousTranslation: CGSize = .zero
     @State private var previousMagnification: CGFloat = 1
@@ -510,9 +521,11 @@ private struct WorldSceneCanvas: View {
                             deltaPitch: -Double(dy) * 0.0055
                         )
                         onCameraMoved()
+                        onInteractionChanged(true)
                     }
                     .onEnded { _ in
                         previousTranslation = .zero
+                        onInteractionChanged(false)
                     }
             )
             .simultaneousGesture(
@@ -536,9 +549,11 @@ private struct WorldSceneCanvas: View {
                         guard delta.isFinite, delta > 0 else { return }
                         camera = camera.zoomed(by: 1 / Double(delta))
                         onCameraMoved()
+                        onInteractionChanged(true)
                     }
                     .onEnded { _ in
                         previousMagnification = 1
+                        onInteractionChanged(false)
                     }
             )
         }

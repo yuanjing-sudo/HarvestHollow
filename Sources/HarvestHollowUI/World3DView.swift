@@ -65,12 +65,14 @@ public struct World3DView: View {
         resolved.showGrid = showGrid
         resolved.showAxes = showAxes
         resolved.outlineFaces = outlineFaces
-        resolved.maximumFaces = 50_000
-        // Use a coarser face LOD while the user is dragging or pinching, then
-        // draw the full detail as soon as the gesture settles. The per-object
-        // budget keeps every landmark visible even when the barn is close.
-        resolved.minimumFaceArea = isInteracting ? 1.2 : 0.4
-        resolved.perObjectFaceLimit = camera.distance > 26 ? 900 : 0
+        // SwiftUI's Canvas hands every fill to Metal. A 30k-face overview
+        // produced ~60k draw operations (fills plus outlines) and tripped an
+        // XPC assertion in the simulator. Keep the overview to a small,
+        // readable LOD and only spend the full per-object budget when the
+        // camera moves in close enough to inspect individual voxels.
+        resolved.maximumFaces = 7_000
+        resolved.minimumFaceArea = isInteracting ? 1.4 : 0.4
+        resolved.perObjectFaceLimit = camera.distance > 26 ? 100 : 0
         return resolved
     }
 
@@ -115,8 +117,10 @@ public struct World3DView: View {
         }
         .task(id: worldSignature) {
             isBuildingWorld = true
-            await Task.yield()
-            let built = VoxelWorldBuilder.build(state: store.state)
+            let snapshot = store.state
+            let built = await Task.detached(priority: .userInitiated) {
+                VoxelWorldBuilder.build(state: snapshot)
+            }.value
             cachedWorld = built
             isBuildingWorld = false
         }

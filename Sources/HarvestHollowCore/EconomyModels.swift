@@ -177,6 +177,7 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
     case technologyResearch
     case aiCitizensBusinesses
     case disastersRecessions
+    case randomEventsConsequences
     case playerProgression
 
     public var id: String { rawValue }
@@ -206,11 +207,12 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
         case .loansCreditDebt: return "Loans, credit & debt"
         case .bankruptcyCompetition: return "Bankruptcy & business competition"
         case .wealthInequalityPoverty: return "Wealth inequality & poverty"
-        case .crimeCorruptionJustice: return "Crime, corruption & penalties"
+        case .crimeCorruptionJustice: return "Crime, corruption & legal penalties"
         case .pollutionSustainability: return "Pollution & sustainability"
         case .technologyResearch: return "Technology, innovation & research"
         case .aiCitizensBusinesses: return "AI citizens & businesses"
         case .disastersRecessions: return "Disasters, recessions & global events"
+        case .randomEventsConsequences: return "Random events & long-term consequences"
         case .playerProgression: return "Player progression & consequences"
         }
     }
@@ -245,6 +247,7 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
         case .technologyResearch: return "Research"
         case .aiCitizensBusinesses: return "AI agents"
         case .disastersRecessions: return "Shocks"
+        case .randomEventsConsequences: return "Echoes"
         case .playerProgression: return "Progression"
         }
     }
@@ -279,6 +282,7 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
         case .technologyResearch: return "lightbulb.fill"
         case .aiCitizensBusinesses: return "cpu.fill"
         case .disastersRecessions: return "tornado"
+        case .randomEventsConsequences: return "clock.arrow.circlepath"
         case .playerProgression: return "star.fill"
         }
     }
@@ -318,6 +322,8 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
              .crimeCorruptionJustice,
              .aiCitizensBusinesses:
             return 16
+        case .randomEventsConsequences:
+            return 4
         case .disastersRecessions:
             return 20
         }
@@ -342,7 +348,8 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
             return .world
         case .wealthInequalityPoverty, .crimeCorruptionJustice,
              .pollutionSustainability, .technologyResearch,
-             .aiCitizensBusinesses, .disastersRecessions, .playerProgression:
+             .aiCitizensBusinesses, .disastersRecessions,
+             .randomEventsConsequences, .playerProgression:
             return .resilience
         }
     }
@@ -359,7 +366,8 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
              .productionLogistics, .importsExports, .governmentElections,
              .taxationSubsidies, .infrastructureServices,
              .happinessHealthEducation, .productivityGrowth,
-             .technologyResearch, .aiCitizensBusinesses, .playerProgression:
+             .technologyResearch, .aiCitizensBusinesses,
+             .randomEventsConsequences, .playerProgression:
             return true
         case .weatherClimate:
             return true
@@ -424,6 +432,8 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
             return "Every resident and firm reacts to prices, jobs, taxes, and confidence. Their choices feed back into the whole system."
         case .disastersRecessions:
             return "Droughts, floods, epidemics, and global slowdowns hit different tiers. Reserves, infrastructure, and trust soften the blow."
+        case .randomEventsConsequences:
+            return "Every random shock is written into the ledger: lost soil, new debt, damaged trust, or a breakthrough that compounds for weeks."
         case .playerProgression:
             return "Your level unlocks new economic layers and grants influence over policy, credit, and investment. Every choice echoes through the ledger."
         }
@@ -459,6 +469,7 @@ public enum EconomyFactor: String, Codable, CaseIterable, Identifiable, Sendable
         case .technologyResearch: return [.happinessHealthEducation, .farmingBusinesses, .infrastructureServices]
         case .aiCitizensBusinesses: return [.populationDemographics, .farmingBusinesses, .consumerDemand, .technologyResearch]
         case .disastersRecessions: return [.weatherClimate, .pollutionSustainability, .importsExports, .loansCreditDebt, .governmentElections]
+        case .randomEventsConsequences: return [.weatherClimate, .pollutionSustainability, .supplyDemandPrices, .loansCreditDebt, .governmentElections]
         case .playerProgression: return EconomyFactor.allCases.filter { $0 != .playerProgression }
         }
     }

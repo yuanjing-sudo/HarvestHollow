@@ -400,6 +400,9 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
             return (agentSummary, hhClamp(Double(aiBusinesses.count) / 12, 0, 1) * 100)
         case .disastersRecessions:
             return (activeEvent?.title ?? "No active shock", activeEvent == nil ? 80 : 35)
+        case .randomEventsConsequences:
+            let last = eventHistory.first?.kind.title ?? "No shocks yet"
+            return ("\(eventHistory.count) remembered · \(last)", activeEvent == nil ? 82 : 42)
         case .playerProgression:
             return ("Level \(lastKnownLevel) · \(tier.shortTitle)", hhClamp(Double(lastKnownLevel) / 25, 0, 1) * 100)
         }
@@ -441,6 +444,7 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
         case .technologyResearch: return delta(latest.productivity, prior.productivity)
         case .aiCitizensBusinesses: return delta(latest.gdp, prior.gdp, scale: 0.001)
         case .disastersRecessions: return delta(latest.gdp, prior.gdp, scale: 0.001)
+        case .randomEventsConsequences: return delta(latest.gdp, prior.gdp, scale: 0.001)
         case .playerProgression: return delta(latest.gdp, prior.gdp, scale: 0.001)
         }
     }

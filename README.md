@@ -11,7 +11,7 @@ a ten-chapter story, and level up a little valley farm. The town expansion adds 
 fishing pond, a cottage kitchen, an achievement journal, a seasonal almanac, a
 collection book, daily gifts, crop mastery, animal affection, a weather forecast, and
 full backward-compatible saves. Three new tabs add a complete side-scrolling 2D arcade
-called **Meadow Dash**, a 29-factor **Valley Ledger** economy that unlocks in tiers as
+called **Meadow Dash**, a 30-factor **Valley Ledger** economy that unlocks in tiers as
 you level, and **Hollow 3D**, an orbitable voxel diorama of the whole farm with an
 explicit XYZ axis, camera presets, object picking and 74 sculpted models.
 Every visual is drawn with SwiftUI `Canvas` from data-driven coloured squares — no PNG
@@ -58,7 +58,7 @@ sprite atlases, no web views, no SceneKit, and no JavaScript.
 | **Quests** | 10-chapter story with automatic objective tracking and rewards, plus a daily order |
 | **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
 | **Meadow Dash** | A 2D auto-runner with 16 levels, 6 biomes, jumping, double jumps, dashing, sliding, hearts, combos, apples, clovers and persistent best scores |
-| **Valley Ledger** | A 29-factor linked economy: soil, weather, yields, livestock, labour, population, demand, prices, inflation, credit, policy, taxes, trade, wellbeing, pollution, research, AI firms, elections and disasters, all unlocking in six tiers |
+| **Valley Ledger** | A 30-factor linked economy: soil, weather, yields, livestock, labour, population, demand, prices, inflation, credit, policy, taxes, trade, wellbeing, pollution, research, AI firms, elections and disasters, all unlocking in six tiers |
 | **Hollow 3D** | A pure-Swift voxel diorama with XYZ axes, a depth-sorted renderer, orbit/pinch camera, six camera presets, object picking, LOD and 74 generated models |
 | **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs |
 | **Cooking** | 18 recipes, 5 categories, ingredient checking, a pantry, sellable dishes and timed growth/market/fishing buffs |
@@ -212,7 +212,7 @@ HarvestHollow/
 │   │   ├── Catalog.swift      # Crops, animals, furniture, themes, quests, items
 │   │   ├── Engine.swift       # Tick loop, actions, validation, events, progression
 │   │   ├── Arcade.swift       # Meadow Dash levels, physics, scoring and career
-│   │   ├── EconomyModels.swift # Tiers, 29-factor catalogue, loans, firms, events
+│   │   ├── EconomyModels.swift # Tiers, 30-factor catalogue, loans, firms, events
 │   │   ├── ValleyEconomy.swift # Persistent ledger, derived values and factor readings
 │   │   ├── EconomySimulation.swift # Daily linked simulation and reporting
 │   │   ├── EconomyEvents.swift # Firms, elections, random shocks and consequences

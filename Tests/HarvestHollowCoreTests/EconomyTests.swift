@@ -7,7 +7,7 @@ final class EconomyTests: XCTestCase {
     func testSubsistenceStartsWithOnlyBasicEconomicFactors() {
         let economy = ValleyEconomy(level: 1)
         XCTAssertEqual(economy.tier, .subsistence)
-        XCTAssertEqual(EconomyFactor.allCases.count, 29)
+        XCTAssertEqual(EconomyFactor.allCases.count, 30)
         let unlocked = EconomyFactor.allCases.filter { economy.isUnlocked($0) }
         XCTAssertEqual(unlocked.count, 6)
         XCTAssertTrue(economy.isUnlocked(.landSoil))

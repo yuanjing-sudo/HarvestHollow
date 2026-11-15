@@ -30,22 +30,29 @@ public struct World3DView: View {
     /// 170k voxels on every SwiftUI body pass made the page block the main
     /// thread long enough for the simulator watchdog to kill the app.
     private var worldSignature: String {
-        let crops = store.state.plots.compactMap(\.crop)
         let animals = store.state.pens.compactMap(\.animal)
-        return [
+        var parts = [
             String(store.state.day),
             String(store.state.level),
             store.state.weather.rawValue,
             store.state.season.rawValue,
             String(store.state.unlockedPlots),
-            String(store.state.unlockedPens),
-            String(crops.count),
-            String(animals.count),
-            String(animals.reduce(0) { $0 + $1.stored })
-        ].joined(separator: "|")
+            String(store.state.unlockedPens)
+        ]
+        for plot in store.state.plots {
+            parts.append("\(plot.id):\(plot.crop?.cropID ?? "-"):\(Int((plot.crop?.growth ?? 0) * 20))")
+        }
+        for animal in animals {
+            parts.append("\(animal.id.uuidString):\(animal.name):\(animal.affectionLevel):\(animal.stored)")
+        }
+        return parts.joined(separator: "|")
     }
 
     private var world: VoxelFarmWorld { cachedWorld }
+
+    private var lightPreset: VoxelLightPreset {
+        VoxelWorldBuilder.lightPreset(for: store.state)
+    }
 
     private static let placeholderWorld = VoxelFarmWorld(
         objects: [],
@@ -61,7 +68,7 @@ public struct World3DView: View {
     )
 
     private var options: VoxelRenderOptions {
-        var resolved = world.lightPreset.options(base: world.defaults)
+        var resolved = lightPreset.options(base: world.defaults)
         resolved.showGrid = showGrid
         resolved.showAxes = showAxes
         resolved.outlineFaces = outlineFaces
@@ -276,11 +283,11 @@ public struct World3DView: View {
 
             VStack(alignment: .trailing, spacing: 8) {
                 HStack(spacing: 6) {
-                    Text(world.lightPreset.title)
+                    Text(lightPreset.title)
                         .font(.system(size: 9, weight: .heavy, design: .rounded))
                         .foregroundStyle(HHTheme.ink)
                     Circle()
-                        .fill(Color(hex: world.lightPreset.skyTop.hex))
+                        .fill(Color(hex: lightPreset.skyTop.hex))
                         .frame(width: 9, height: 9)
                         .overlay(Circle().stroke(.white.opacity(0.7), lineWidth: 1))
                 }

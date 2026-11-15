@@ -21,12 +21,44 @@ public struct World3DView: View {
     @State private var showDetails = false
     @State private var isInteracting = false
     @State private var faceCache = VoxelFaceCache()
+    @State private var cachedWorld = World3DView.placeholderWorld
+    @State private var isBuildingWorld = true
 
     public init() {}
 
-    private var world: VoxelFarmWorld {
-        VoxelWorldBuilder.build(state: store.state)
+    /// Building the full voxel diorama is deliberately cached. Rebuilding all
+    /// 170k voxels on every SwiftUI body pass made the page block the main
+    /// thread long enough for the simulator watchdog to kill the app.
+    private var worldSignature: String {
+        let crops = store.state.plots.compactMap(\.crop)
+        let animals = store.state.pens.compactMap(\.animal)
+        return [
+            String(store.state.day),
+            String(store.state.level),
+            store.state.weather.rawValue,
+            store.state.season.rawValue,
+            String(store.state.unlockedPlots),
+            String(store.state.unlockedPens),
+            String(crops.count),
+            String(animals.count),
+            String(animals.reduce(0) { $0 + $1.stored })
+        ].joined(separator: "|")
     }
+
+    private var world: VoxelFarmWorld { cachedWorld }
+
+    private static let placeholderWorld = VoxelFarmWorld(
+        objects: [],
+        models: [:],
+        weather: .sunny,
+        day: 1,
+        season: .spring,
+        lightPreset: .noon,
+        defaults: .diorama,
+        residentCount: 0,
+        cropCount: 0,
+        landmarkCount: 0
+    )
 
     private var options: VoxelRenderOptions {
         var resolved = world.lightPreset.options(base: world.defaults)
@@ -80,6 +112,13 @@ public struct World3DView: View {
         }
         .onChange(of: store.state.day) { _, _ in
             selectedObjectID = nil
+        }
+        .task(id: worldSignature) {
+            isBuildingWorld = true
+            await Task.yield()
+            let built = VoxelWorldBuilder.build(state: store.state)
+            cachedWorld = built
+            isBuildingWorld = false
         }
     }
 
@@ -215,6 +254,21 @@ public struct World3DView: View {
                     .stroke(HHTheme.ink.opacity(0.12), lineWidth: 1)
             )
             .shadow(color: HHTheme.soilDark.opacity(0.2), radius: 16, y: 8)
+            .overlay {
+                if isBuildingWorld {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color(hex: "BFE3EE").opacity(0.92))
+                        VStack(spacing: 9) {
+                            ProgressView()
+                                .tint(HHTheme.forest)
+                            Text("Stacking voxels…")
+                                .font(.hhCaption(12))
+                                .foregroundStyle(HHTheme.muted)
+                        }
+                    }
+                }
+            }
 
             VStack(alignment: .trailing, spacing: 8) {
                 HStack(spacing: 6) {

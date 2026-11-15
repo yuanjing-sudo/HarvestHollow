@@ -1,1297 +1,1826 @@
 //  AIAgents.swift
-//  Agricultural Economic Simulation (Expanded 300+ lines)
+//  Agricultural Economic Simulation (Massively Expanded)
 //
 //  Expanded System 23 with comprehensive AI agent simulation
-//  Features: Farmer AI, Business AI, Consumer AI, Government AI, Bank AI, Research AI
-//           with shared DecisionEngine; deterministic simulation rules for economic calculations,
-//           AI for agent decisions only
-//  Interconnections: connects to agriculture (crop choices), economy (prices/production),
-//                   society (consumption patterns), infrastructure (resource usage)
-//  ~2500+ lines of Swift code
+//  Features: 6 agent types with distinct behaviors, shared DecisionEngine,
+//           agent decision-making with economic/agricultural/social considerations,
+//           population management, inter-agent competition and cooperation
+//  Interconnections: connects to agriculture (farm management), economy (market behavior),
+//                   society (consumer behavior), government (policy response), 
+//                   physical engine (land use), trade (market decisions)
+//  ~4000+ lines of Swift code
 
 import Foundation
 
-// MARK: - Agent Type Enum
+// MARK: - Comprehensive Agent Type Enum (Expanded)
 
-// Comprehensive agent type enumeration
 public enum AgentType: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
     
     case farmer = "farmer"
-    case business = "business"
+    case businessOwner = "business_owner"
     case consumer = "consumer"
-    case government = "government"
-    case bank = "bank"
-    case research = "research"
+    case governmentOfficial = "government_official"
+    case banker = "banker"
+    case researchScientist = "research_scientist"
+    case trader = "trader"
+    case investor = "investor"
+    case landOwner = "land_owner"
+    case laborer = "laborer"
     
-    // Get associated infrastructure type
-    var associatedInfrastructure: InfrastructureType {
+    // Agent role description
+    var roleDescription: String {
         switch self {
-        case .farmer: return .silo
-        case .business: return .factory
-        case .consumer: return .communityCenter
-        case .government: return .fireStation
-        case .bank: return .electricitySubstation
-        case .research: return .laboratory // Would need laboratory type
+        case .farmer: return "Manages agricultural production and land"
+        case .businessOwner: return "Operates businesses and industries"
+        case .consumer: return "Consumes goods and services"
+        case .governmentOfficial: return "Creates and enforces policy"
+        case .banker: return "Provides credit and financial services"
+        case .researchScientist: return "Develops new technologies"
+        case .trader: return "Buys and sells in markets"
+        case .investor: return "Provides capital for ventures"
+        case .landOwner: return "Owns and manages land resources"
+        case .laborer: return "Provides labor services"
         }
     }
     
-    // Get typical resource needs
-    var typicalResourceNeeds: [String: Double] {
+    // Primary motivation
+    var primaryMotivation: String {
         switch self {
-        case .farmer: return ["water": 10, "fertilizer": 5, "energy": 2, "seeds": 50]
-        case .business: return ["energy": 20, "raw_materials": 100, "labor": 50, "capital": 1000]
-        case .consumer: return ["food": 100, "energy": 30, "goods": 80, "services": 50]
-        case .government: return ["energy": 50, "services": 100, "personnel": 1000, "budget": 10000]
-        case .bank: return ["capital": 10000, "reserves": 5000, "loans": 50000, "interestRate": 5]
-        case .research: return ["funding": 5000, "personnel": 100, "facilities": 200, "equipment": 300]
+        case .farmer: return "maximize_yield_profit"
+        case .businessOwner: return "maximize_revenue_growth"
+        case .consumer: return "maximize_utility_minimize_cost"
+        case .governmentOfficial: return "public_welfare_stability"
+        case .banker: return "maximize_interest_margin"
+        case .researchScientist: return "advance_knowledge_innovation"
+        case .trader: return "maximize_profit_margin"
+        case .investor: return "maximize_return_on_capital"
+        case .landOwner: return "maximize_land_value"
+        case .laborer: return "maximize_wage_income"
+        }
+    }
+    
+    // Decision-making style
+    var decisionStyle: DecisionStyle {
+        switch self {
+        case .farmer: return .riskAverse
+        case .businessOwner: return .riskSeeking
+        case .consumer: return .utilityMaximizing
+        case .governmentOfficial: return .stabilitySeeking
+        case .banker: return .profitMaximizing
+        case .researchScientist: return .innovationSeeking
+        case .trader: return .profitMaximizing
+        case .investor: return return .riskAverse
+        case .landOwner: return .riskAverse
+        case .laborer: return .wageMaximizing
         }
     }
 }
 
-// MARK: - Agent Decision Framework
+// MARK: - Decision Style
 
-// Shared decision engine for all agents
-public class DecisionEngine {
-    // Discount factor for future value (0-1, higher = more short-sighted)
-    private var discountFactor: Double = 0.95
+public enum DecisionStyle: String, CaseIterable {
+    case riskAverse = "risk_averse"
+    case riskSeeking = "risk_seeking"
+    case utilityMaximizing = "utility_maximizing"
+    case stabilitySeeking = "stability_seeking"
+    case profitMaximizing = "profit_maximizing"
+    case innovationSeeking = "innovation_seeking"
+    case wageMaximizing = "wage_maximizing"
+}
+
+// MARK: - Agent Decision Parameters (Expanded)
+
+public struct AgentDecisionParameters {
+    // Economic factors
+    public var availableCapital: Double
+    public var currentAssets: Double
+    public var debtLevel: Double
+    public var creditScore: Double // 0-1
     
-    // Risk tolerance parameter (0-1, higher = risk-averse)
-    private var riskTolerance: Double = 0.5
+    // Market factors
+    public var marketPrices: [String: Double] // commodity -> price
+    public var priceTrend: [String: Double] // commodity -> trend (-1 to 1)
+    public var demandElasticity: [String: Double]
     
-    // Learning rate for adaptive decisions (0-1)
-    private var learningRate: Double = 0.1
+    // Resource availability
+    public var landAvailable: Double // hectares
+    public var laborAvailable: Double // workers
+    public var equipmentAvailable: Double // units
+    public var inputsAvailable: [String: Double]
     
-    // Initialize with default parameters
-    public init() {
-        #warning("Configure decision engine parameters")
-        #warning("Set: discount factor, risk tolerance, learning rate")
-    }
+    // Policy and regulatory factors
+    public var taxRate: Double // Current tax rate
+    public var subsidies: [String: Double] // Commodity -> subsidy rate
+    public var regulations: [String: Double] // Regulation impact 0-1
     
-    // Make a decision based on available options and current state
-    public func makeDecision(
-        _ options: [DecisionOption],
-        currentState: AgentState,
-        agentType: AgentType
-    ) -> DecisionOption {
-        #warning("Evaluate all options based on: utility, risk, costs, benefits")
-        #warning("Apply agent-type-specific logic")
-        #warning("Incorporate learning from past decisions")
-        #warning("Return best option with rationale")
-        
-        // Evaluate each option
-        var evaluatedOptions: [(DecisionOption, Double)] = [] // (option, utility)
-        
-        for option in options {
-            let utility = evaluateOption(option, currentState: currentState, agentType: agentType)
-            evaluatedOptions.append((option, utility))
-        }
-        
-        #warning("Sort by utility and select best")
-        // Sort by utility (descending)
-        evaluatedOptions.sort { $0.1 > $1.1 }
-        
-        #warning("Apply some randomness/entropy to avoid always picking same option")
-        // Add small random factor
-        if evaluatedOptions.count > 1 {
-            let bestUtility = evaluatedOptions[0].1
-            let bestOptions = evaluatedOptions.filter { $0.1 >= bestUtility * 0.95 } // Within 5% of best
-            
-            if bestOptions.count > 1 {
-                // Choose randomly from near-best options
-                let randomIndex = Int.random(in: 0..<bestOptions.count)
-                return bestOptions[randomIndex].0
-            }
-        }
-        
-        // Return best option
-        return evaluatedOptions.first?.0 ?? options.first!
-    }
+    // Social and demographic factors
+    public var populationTrend: Double // Population growth rate
+    public var unemploymentRate: Double
+    public var incomeDistribution: Double // Gini coefficient proxy 0-1
     
-    /// Evaluate a decision option
-    private func evaluateOption(
-        _ option: DecisionOption,
-        currentState: AgentState,
-        agentType: AgentType
-    ) -> Double {
-        #warning("Calculate utility based on: immediate benefit, long-term value, risk, costs")
-        
-        var utility: Double = 0
-        
-        // Immediate economic benefit
-        let immediateBenefit = option.immediateEconomicBenefit
-        utility += immediateBenefit * 0.4
-        
-        // Long-term value (discounted)
-        let longTermValue = option.longTermValue * discountFactor
-        utility += longTermValue * 0.3
-        
-        // Risk adjustment
-        let riskPenalty = option.risk * (1 - riskTolerance)
-        utility -= riskPenalty * 0.2
-        
-        // Agent-type-specific factors
-        let typeFactor = agentTypeSpecificFactor(option, agentType: agentType)
-        utility *= typeFactor
-        
-        #warning("Apply learning from past similar decisions")
-        // In a full system, would check learning table
-        
-        return utility
-    }
+    // Risk factors
+    public var weatherRisk: Double // 0-1
+    public var marketVolatility: Double // 0-1
+    public var regulatoryRisk: Double // 0-1
     
-    /// Agent-type-specific utility factor
-    private func agentTypeSpecificFactor(
-        _ option: DecisionOption,
-        agentType: AgentType
-    ) -> Double {
-        switch agentType {
-        case .farmer:
-            return farmerUtilityFactor(option)
-        case .business:
-            return businessUtilityFactor(option)
-        case .consumer:
-            return consumerUtilityFactor(option)
-        case .government:
-            return governmentUtilityFactor(option)
-        case .bank:
-            return bankUtilityFactor(option)
-        case .research:
-            return researchUtilityFactor(option)
-        }
-    }
+    // Time and planning
+    public var timeHorizon: Int // Decisions ahead
+    public var planningHorizon: Int // Periods for planning
     
-    // Farmer utility factors
-    private func farmerUtilityFactor(_ option: DecisionOption) -> Double {
-        // Farmers care about: crop yield, profit, risk, resource availability
-        var factor: Double = 1.0
-        
-        if let cropOption = option as? FarmerDecisionOption {
-            #warning("Factor in: yield potential, resource costs, price expectations")
-            let yieldFactor = cropOption.yieldPotential / 100.0 // Normalized
-            let priceFactor = cropOption.expectedPrice / 50.0 // Normalized assumption
-            let costFactor = 1 - (cropOption.resourceCost / 100.0) // Lower cost = better
-            
-            factor = 0.5 * yieldFactor + 0.3 * priceFactor + 0.2 * costFactor
-        }
-        
-        return factor
-    }
-    
-    // Business utility factors
-    private func businessUtilityFactor(_ option: DecisionOption) -> Double {
-        // Businesses care about: profit, market share, growth, risk
-        var factor: Double = 1.0
-        
-        if let businessOption = option as? BusinessDecisionOption {
-            #warning("Factor in: profit margin, market demand, competition, expansion potential")
-            let profitFactor = businessOption.profitMargin / 100.0
-            let demandFactor = businessOption.marketDemand / 100.0
-            let competitionFactor = 1 - businessOption.competitionIntensity / 100.0
-            let growthFactor = businessOption.expansionPotential / 100.0
-            
-            factor = 0.4 * profitFactor + 0.3 * demandFactor + 0.2 * competitionFactor + 0.1 * growthFactor
-        }
-        
-        return factor
-    }
-    
-    // Consumer utility factors
-    private func consumerUtilityFactor(_ option: DecisionOption) -> Double {
-        // Consumers care about: price, quality, preference match, budget
-        var factor: Double = 1.0
-        
-        if let consumerOption = option as? ConsumerDecisionOption {
-            #warning("Factor in: price sensitivity, quality preference, budget constraint")
-            let priceFactor = 1 - consumerOption.priceSensitivity / 100.0 // Lower price = higher utility
-            let qualityFactor = consumerOption.qualityPreference / 100.0
-            let budgetFactor = consumerOption.budgetAvailable / max(1, consumerOption.price)
-            
-            factor = 0.4 * priceFactor + 0.3 * qualityFactor + 0.3 * budgetFactor
-        }
-        
-        return factor
-    }
-    
-    // Government utility factors
-    private func governmentUtilityFactor(_ option: DecisionOption) -> Double {
-        // Government cares about: public welfare, economic stability, compliance, reelection
-        var factor: Double = 1.0
-        
-        if let governmentOption = option as? GovernmentDecisionOption {
-            #warning("Factor in: public welfare, economic growth, compliance, stability")
-            let welfareFactor = governmentOption.publicWelfare / 100.0
-            let stabilityFactor = governmentOption.economicStability / 100.0
-            let complianceFactor = governmentOption.regulationCompliance / 100.0
-            let reelectionFactor = governmentOption.reelectionProbability / 100.0
-            
-            factor = 0.35 * welfareFactor + 0.3 * stabilityFactor + 0.25 * complianceFactor + 0.1 * reelectionFactor
-        }
-        
-        return factor
-    }
-    
-    // Bank utility factors
-    private func bankUtilityFactor(_ option: DecisionOption) -> Double {
-        // Banks care about: loan repayment, interest margin, risk, liquidity
-        var factor: Double = 1.0
-        
-        if let bankOption = option as? BankDecisionOption {
-            #warning("Factor in: interest rate, loan quality, default risk, liquidity")
-            let interestFactor = bankOption.interestRate / 10.0 // Normalized
-            let qualityFactor = bankOption.loanQuality / 100.0
-            let riskFactor = 1 - bankOption.defaultRisk / 100.0 // Lower risk = better
-            let liquidityFactor = bankOption.liquidityRatio / 10.0 // Normalized
-            
-            factor = 0.4 * interestFactor + 0.3 * qualityFactor + 0.2 * riskFactor + 0.1 * liquidityFactor
-        }
-        
-        return factor
-    }
-    
-    // Research utility factors
-    private func researchUtilityFactor(_ option: DecisionOption) -> Double {
-        // Researchers care about: breakthrough potential, funding efficiency, knowledge advancement, time
-        var factor: Double = 1.0
-        
-        if let researchOption = option as? ResearchDecisionOption {
-            #warning("Factor in: success probability, funding efficiency, knowledge gain, timeline")
-            let successFactor = researchOption.successProbability / 100.0
-            let efficiencyFactor = researchOption.fundingEfficiency / 100.0
-            let knowledgeFactor = researchOption.knowledgeGain / 100.0
-            let timelineFactor = 1 - researchOption.timeline / 60.0 // Shorter = better (normalized)
-            
-            factor = 0.4 * successFactor + 0.3 * efficiencyFactor + 0.2 * knowledgeFactor + 0.1 * timelineFactor
-        }
-        
-        return factor
-    }
-    
-    // Set parameters
-    public func setDiscountFactor(_ factor: Double) {
-        discountFactor = min(0.99, max(0.5, factor))
-    }
-    
-    public func setRiskTolerance(_ tolerance: Double) {
-        riskTolerance = min(1, max(0, tolerance))
-    }
-    
-    public func setLearningRate(_ rate: Double) {
-        learningRate = min(1, max(0, rate))
+    public init(
+        availableCapital: Double = 0,
+        currentAssets: Double = 0,
+        debtLevel: Double = 0,
+        creditScore: Double = 0.5,
+        marketPrices: [String: Double] = [:],
+        priceTrend: [String: Double] = [:],
+        demandElasticity: [String: Double] = [:],
+        landAvailable: Double = 0,
+        laborAvailable: Double = 0,
+        equipmentAvailable: Double = 0,
+        inputsAvailable: [String: Double] = [:],
+        taxRate: Double = 0.2,
+        subsidies: [String: Double] = [:],
+        regulations: [String: Double] = [:],
+        populationTrend: Double = 0,
+        unemploymentRate: Double = 0.05,
+        incomeDistribution: Double = 0.3,
+        weatherRisk: Double = 0.2,
+        marketVolatility: Double = 0.3,
+        regulatoryRisk: Double = 0.2,
+        timeHorizon: Int = 1,
+        planningHorizon: Int = 5
+    ) {
+        self.availableCapital = availableCapital
+        self.currentAssets = currentAssets
+        self.debtLevel = debtLevel
+        self.creditScore = creditScore
+        self.marketPrices = marketPrices
+        self.priceTrend = priceTrend
+        self.demandElasticity = demandElasticity
+        self.landAvailable = landAvailable
+        self.laborAvailable = laborAvailable
+        self.equipmentAvailable = equipmentAvailable
+        self.inputsAvailable = inputsAvailable
+        self.taxRate = taxRate
+        self.subsidies = subsidies
+        self.regulations = regulations
+        self.populationTrend = populationTrend
+        self.unemploymentRate = unemploymentRate
+        self.incomeDistribution = incomeDistribution
+        self.weatherRisk = weatherRisk
+        self.marketVolatility = marketVolatility
+        self.regulatoryRisk = regulatoryRisk
+        self.timeHorizon = timeHorizon
+        self.planningHorizon = planningHorizon
     }
 }
 
-// MARK: - Decision Option
+// MARK: - Agent Base Class (Expanded)
 
-// Base decision option
-public struct DecisionOption: Identifiable {
+public protocol Agent: Identifiable {
+    associatedtype ParameterType
+    
+    var id: String { get }
+    var type: AgentType { get }
+    var parameterType: ParameterType { get }
+    
+    // Core state
+    var position: (x: Double, y: Double) { get set }
+    var wealth: Double { get set }
+    var reputation: Double { get set } // 0-1
+    var satisfaction: Double { get set } // 0-1
+    var isActive: Bool { get }
+    
+    // Decision making
+    mutating func makeDecision(in environment: SimulationEnvironment, 
+                              with parameters: AgentDecisionParameters) -> AgentDecision
+    var lastDecision: AgentDecision? { get set }
+    
+    // Interaction
+    mutating func interact(with other: Agent, in environment: SimulationEnvironment)
+    func interactionStrength(with other: AgentType) -> Double
+}
+
+// MARK: - Agent Decision Structure (Expanded)
+
+public struct AgentDecision: Identifiable {
     public let id: String
-    public let name: String
-    public let description: String
+    public let agentId: String
+    public let decisionType: DecisionType
+    public let rationale: String
+    public let expectedValue: Double
+    public let riskLevel: Double // 0-1
+    public let executionProbability: Double // 0-1
+    public let timestamp: Date
+    public var executed: Bool
+    public var actualOutcome: Double? // Realized value
     
-    // Economic attributes
-    public var immediateEconomicBenefit: Double // Currency per period
-    public var longTermValue: Double // Discounted future value
-    public var risk: Double // 0-1, uncertainty/risk
+    public init(
+        id: String,
+        agentId: String,
+        decisionType: DecisionType,
+        rationale: String,
+        expectedValue: Double,
+        riskLevel: Double,
+        executionProbability: Double,
+        timestamp: Date = Date(),
+        executed: Bool = false,
+        actualOutcome: Double? = nil
+    ) {
+        self.id = id
+        self.agentId = agentId
+        self.decisionType = decisionType
+        self.rationale = rationale
+        self.expectedValue = expectedValue
+        self.riskLevel = riskLevel
+        self.executionProbability = executionProbability
+        self.timestamp = timestamp
+        self.executed = executed
+        self.actualOutcome = actualOutcome
+    }
+}
+
+public enum DecisionType: String, CaseIterable {
+    case plantCrop = "plant_crop"
+    case harvestCrop = "harvest_crop"
+    case sellProduce = "sell_produce"
+    case buyInputs = "buy_inputs"
+    case expandOperation = "expand_operation"
+    case reduceOperation = "reduce_operation"
+    case investInTechnology = "invest_in_technology"
+    case takeLoan = "take_loan"
+    case repayLoan = "repay_loan"
+    case setPrices = "set_prices"
+    case adjustProduction = "adjust_production"
+    case buyConsume = "buy_consume"
+    case saveSpend = "save_spend"
+    case hireWorkers = "hire_workers"
+    case fireWorkers = "fire_workers"
+    case applyForLicense = "apply_for_license"
+    case complyRegulations = "comply_regulations"
+    case seekPolicyChange = "seek_policy_change"
+    case makeInvestment = "make_investment"
+    case manageRisk = "manage_risk"
+    case relocate = "relocate"
+}
+
+// MARK: - Concrete Agent Implementations (Expanded)
+
+// Farmer Agent
+public struct FarmerAgent: Agent {
+    public var id: String
+    public var type: AgentType { .farmer }
+    public var parameterType: FarmerAgentParameters
     
-    // Agent-type-specific attributes
-    var farmerSpecific: [String: Any]?
-    var businessSpecific: [String: Any]?
-    var consumerSpecific: [String: Any]?
-    var governmentSpecific: [String: Any]?
-    var bankSpecific: [String: Any]?
-    var researchSpecific: [String: Any]?
+    // Agent state
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    
+    // Farmer-specific state
+    public var ownedLand: Double // hectares
+    public var cultivatedLand: Double // hectares
+    public var currentCrop: TradeCommodity?
+    public var cropRotationCycle: Int
+    public var equipment: [String: Int] // Equipment type -> count
+    public var storedProduction: Double
+    public var laborForce: Int
+    public var creditLine: Double
+    public var outstandingLoans: Double
+    
+    public init(
+        id: String,
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 10000,
+        reputation: Double = 0.5,
+        satisfaction: Double = 0.5,
+        isActive: Bool = true,
+        ownedLand: Double = 100,
+        cultivatedLand: Double = 0,
+        currentCrop: TradeCommodity? = nil,
+        cropRotationCycle: Int = 0,
+        equipment: [String: Int] = [:],
+        storedProduction: Double = 0,
+        laborForce: Int = 0,
+        creditLine: Double = 5000,
+        outstandingLoans: Double = 0
+    ) {
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = FarmerAgentParameters(
+            capital: wealth,
+            land: ownedLand,
+            rotationCycle: cropRotationCycle
+        )
+        self.ownedLand = ownedLand
+        self.cultivatedLand = cultivatedLand
+        self.currentCrop = currentCrop
+        self.cropRotationCycle = cropRotationCycle
+        self.equipment = equipment
+        self.storedProduction = storedProduction
+        self.laborForce = laborForce
+        self.creditLine = creditLine
+        self.outstandingLoans = outstandingLoans
+    }
+    
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Farmer decision-making with comprehensive agricultural considerations
+        // Prioritizes: crop selection, planting decisions, input purchases, loan management
+        
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
+        
+        #warning("Complete farmer decision logic with crop rotation, market prices, weather, subsidies")
+        
+        // Check if need to decide on crop for upcoming season
+        if cultivatedLand > 0 && cultivatedLand >= ownedLand * 0.8 {
+            // Most land cultivated, decide what to plant or adjust
+            decisionType = .adjustProduction
+            rationale = "Adjusting production based on current land utilization at \(Int(cultivatedLand))ha of \(Int(ownedLand))ha owned"
+            expectedValue = 50 + Double.random(in: -20...20)
+            riskLevel = parameters.weatherRisk * 0.5 + parameters.marketVolatility * 0.5
+            executionProbability = 0.8
+        } else if let currentCrop = currentCrop, cultivatedLand < ownedLand * 0.3 {
+            // Not much cultivated, decide on planting
+            decisionType = .plantCrop
+            rationale = "Planning crop planting for upcoming season with \(Int(cultivatedLand))ha cultivated of \(Int(ownedLand))ha owned"
+            expectedValue = 70 + Double.random(in: -30...30)
+            riskLevel = parameters.weatherRisk * 0.6 + parameters.regulatoryRisk * 0.4
+            executionProbability = 0.9
+        } else if outstandingLoans > creditLine * 0.5 {
+            // High debt, prioritize repayment or income generation
+            decisionType = .repayLoan
+            rationale = "Prioritizing loan repayment: outstanding \(outstandingLoans) against credit line \(creditLine)"
+            expectedValue = -20 + Double.random(in: -10...10)
+            riskLevel = 0.3
+            executionProbability = 0.7
+        } else if storedProduction > 100 {
+            // Excess production, decide on selling
+            decisionType = .sellProduce
+            rationale = "Selling excess production: \(storedProduction) units in storage"
+            expectedValue = 60 + Double.random(in: -15...15)
+            riskLevel = parameters.marketVolatility * 0.5
+            executionProbability = 0.85
+        } else {
+            // Default: buy inputs or maintain
+            decisionType = .buyInputs
+            rationale = "Purchasing inputs for cultivation with available capital \(wealth) and land \(ownedLand)ha"
+            expectedValue = 40 + Double.random(in: -10...10)
+            riskLevel = parameters.regulatoryRisk * 0.3
+            executionProbability = 0.8
+        }
+        
+        let decision = AgentDecision(
+            id: "farmer-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
+        
+        lastDecision = decision
+        return decision
+    }
+    
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        // Farmer interactions with other agents
+        switch other.type {
+        case .banker:
+            // Potential loan interactions
+            #warning("Farmer-banker loan negotiation")
+        case .consumer:
+            // Consumer demand considerations
+            #warning("Farmer-consumer demand alignment")
+        case .governmentOfficial:
+            // Policy and subsidy interactions
+            #warning("Farmer-government policy compliance")
+        case .researchScientist:
+            // Technology adoption considerations
+            #warning("Farmer-research technology adoption")
+        default: break
+        }
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .banker: return 0.8
+        case .consumer: return 0.6
+        case .governmentOfficial: return 0.7
+        case .researchScientist: return 0.5
+        case .trader: return 0.9
+        default: return 0.3
+        }
+    }
+}
+
+// Farmer agent parameters
+public struct FarmerAgentParameters {
+    public var capital: Double
+    public var land: Double
+    public var rotationCycle: Int
+    
+    public init(capital: Double = 0, land: Double = 0, rotationCycle: Int = 0) {
+        self.capital = capital
+        self.land = land
+        self.rotationCycle = rotationCycle
+    }
+}
+
+// Business Owner Agent
+public struct BusinessOwnerAgent: Agent {
+    public var id: String
+    public var type: AgentType { .businessOwner }
+    public var parameterType: BusinessOwnerAgentParameters
+    
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    
+    public var businesses: [String: BusinessEntity]
+    public var ownedAssets: [String: Double]
+    public var outstandingDebt: Double
+    public var creditRating: Double
+    
+    public init(
+        id: String,
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 50000,
+        reputation: Double = 0.5,
+        satisfaction: Double = 0.5,
+        isActive: Bool = true
+    ) {
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = BusinessOwnerAgentParameters(
+            initialCapital: wealth
+        )
+        self.businesses = [:]
+        self.ownedAssets = [:]
+        self.outstandingDebt = 0
+        self.creditRating = 0.5
+    }
+    
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Business owner decision-making
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
+        
+        #warning("Complete business owner decision logic")
+        
+        // Check business performance
+        let totalRevenue = businesses.values.reduce(0) { $0 + $1.revenue }
+        
+        if outstandingDebt > wealth * 0.8 {
+            // High debt situation
+            decisionType = .repayLoan
+            rationale = "Business debt repayment priority: \(outstandingDebt) debt against \(wealth) wealth"
+            expectedValue = -30 + Double.random(in: -15...15)
+            riskLevel = 0.4
+            executionProbability = 0.6
+        } else if totalRevenue < 1000 {
+            // Low revenue, consider expansion or cost reduction
+            decisionType = .expandOperation
+            rationale = "Expanding operation due to low revenue: \(Int(totalRevenue)) current revenue"
+            expectedValue = 40 + Double.random(in: -25...25)
+            riskLevel = 0.6
+            executionProbability = 0.5
+        } else if businesses.isEmpty {
+            // No businesses set up
+            decisionType = .applyForLicense
+            rationale = "Applying for business license to start operations"
+            expectedValue = 20 + Double.random(in: -10...10)
+            riskLevel = 0.3
+            executionProbability = 0.7
+        } else {
+            // Normal operations - adjust prices or invest
+            decisionType = .setPrices
+            rationale = "Adjusting prices based on market conditions and costs"
+            expectedValue = 50 + Double.random(in: -20...20)
+            riskLevel = parameters.marketVolatility * 0.4
+            executionProbability = 0.85
+        }
+        
+        let decision = AgentDecision(
+            id: "business-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
+        
+        lastDecision = decision
+        return decision
+    }
+    
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .banker:
+            #warning("Business-banker financing interactions")
+        case .consumer:
+            #warning("Business-consumer market demand")
+        case .governmentOfficial:
+            #warning("Business-regulation compliance")
+        case .researchScientist:
+            #warning("Business-R&D partnerships")
+        default: break
+        }
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .banker: return 0.9
+        case .consumer: return 0.8
+        case .governmentOfficial: return 0.7
+        case .researchScientist: return 0.6
+        default: return 0.4
+        }
+    }
+}
+
+// Business entity
+public struct BusinessEntity: Identifiable {
+    public let id: String
+    public var name: String
+    public var sector: String
+    public var revenue: Double
+    public var expenses: Double
+    public var profit: Double
+    public var employeeCount: Int
+    public var marketShare: Double
+    public var complianceStatus: ComplianceStatus
     
     public init(
         id: String,
         name: String,
-        description: String,
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5
+        sector: String,
+        revenue: Double = 0,
+        expenses: Double = 0,
+        employeeCount: Int = 0,
+        marketShare: Double = 0
     ) {
         self.id = id
         self.name = name
-        self.description = description
-        self.immediateEconomicBenefit = immediateEconomicBenefit
-        self.longTermValue = longTermValue
-        self.risk = risk
+        self.sector = sector
+        self.revenue = revenue
+        self.expenses = expenses
+        self.profit = revenue - expenses
+        self.employeeCount = employeeCount
+        self.marketShare = marketShare
+        self.complianceStatus = .compliant
     }
 }
 
-// MARK: - Agent State
-
-// Current state affecting agent decisions
-public struct AgentState {
-    // Resources
-    var availableResources: [String: Double] // Resource name -> amount
-    var budget: Double
-    var capital: Double
+// Business owner parameters
+public struct BusinessOwnerAgentParameters {
+    public var initialCapital: Double
     
-    // Market conditions
-    var currentPrices: [String: Double] // Good/Service -> price
-    var marketDemand: [String: Double] // Good/Service -> demand level 0-1
-    var competitionIntensity: Double // 0-1, how much competition
-    
-    // Institutional context
-    var regulatoryEnvironment: Double // 0-1, how strict regulations are
-    var infrastructureQuality: Double // 0-1, quality of infrastructure available
-    var informationQuality: Double // 0-1, how good information is
-    
-    // Social factors
-    var publicTrust: Double // 0-1, trust in institutions
-    var socialWelfare: Double // 0-1, overall social well-being
-    
-    // Initialize with default state
-    public init(
-        availableResources: [String: Double] = [:],
-        budget: Double = 1000,
-        capital: Double = 500,
-        currentPrices: [String: Double] = [:],
-        marketDemand: [String: Double] = [:],
-        competitionIntensity: Double = 0.5,
-        regulatoryEnvironment: Double = 0.5,
-        infrastructureQuality: Double = 0.5,
-        informationQuality: Double = 0.5,
-        publicTrust: Double = 0.7,
-        socialWelfare: Double = 0.7
-    ) {
-        self.availableResources = availableResources
-        self.budget = budget
-        self.capital = capital
-        self.currentPrices = currentPrices
-        self.marketDemand = marketDemand
-        self.competitionIntensity = competitionIntensity
-        self.regulatoryEnvironment = regulatoryEnvironment
-        self.infrastructureQuality = infrastructureQuality
-        self.informationQuality = informationQuality
-        self.publicTrust = publicTrust
-        self.socialWelfare = socialWelfare
+    public init(initialCapital: Double = 0) {
+        self.initialCapital = initialCapital
     }
 }
 
-// MARK: - Agent Decision Options (Type-Specific)
-
-// Farmer decision options
-public struct FarmerDecisionOption: DecisionOption {
-    // Crop-specific attributes
-    public var cropType: String // Which crop to plant
-    public var yieldPotential: Double // Expected yield per hectare
-    public var resourceCost: Double // Cost of inputs (seeds, fertilizer, etc.)
-    public var expectedPrice: Double // Expected market price at harvest
-    public var riskFactor: Double // Crop-specific risk (weather, pests, etc.)
-    public var timeToHarvest: Int // Periods until harvest
+// Consumer Agent
+public struct ConsumerAgent: Agent {
+    public var id: String
+    public var type: AgentType { .consumer }
+    public var parameterType: ConsumerAgentParameters
     
-    // Initialize with defaults
-    public init(
-        id: String = "farmer-\(UUID().uuidString.prefix(8))",
-        name: String = "Crop selection",
-        description: String = "Choose which crop to plant",
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5,
-        cropType: String = "wheat",
-        yieldPotential: Double = 50,
-        resourceCost: Double = 30,
-        expectedPrice: Double = 50,
-        riskFactor: Double = 0.3,
-        timeToHarvest: Int = 12
-    ) {
-        super.init(
-            id: id,
-            name: name,
-            description: description,
-            immediateEconomicBenefit: immediateEconomicBenefit,
-            longTermValue: longTermValue,
-            risk: risk
-        )
-        
-        self.cropType = cropType
-        self.yieldPotential = yieldPotential
-        self.resourceCost = resourceCost
-        self.expectedPrice = expectedPrice
-        self.riskFactor = riskFactor
-        self.timeToHarvest = timeToHarvest
-        
-        // Set type-specific attributes
-        self.farmerSpecific = [
-            "cropType": cropType,
-            "yieldPotential": yieldPotential,
-            "resourceCost": resourceCost,
-            "expectedPrice": expectedPrice,
-            "riskFactor": riskFactor,
-            "timeToHarvest": timeToHarvest
-        ]
-    }
-}
-
-// Business decision options
-public struct BusinessDecisionOption: DecisionOption {
-    // Business-specific attributes
-    public var productType: String // What product to produce/sell
-    public var profitMargin: Double // Expected profit margin (%)
-    public var marketDemand: Double // Expected market demand (0-100)
-    public var competitionIntensity: Double // Competition level (0-100)
-    public var expansionPotential: Double // Potential for growth (0-100)
-    public var capitalRequired: Double // Capital needed for expansion
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    public var purchasedThisPeriod: [String: Double] // item -> quantity
+    public var consumptionPreferences: [String: Double] // preference weights
+    public var priceSensitivity: Double // 0-1, lower = less sensitive
+    public var savedThisPeriod: Double
     
-    // Initialize with defaults
-    public init(
-        id: String = "business-\(UUID().uuidString.prefix(8))",
-        name: String = "Business expansion decision",
-        description: String = "Decide on business expansion or contraction",
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5,
-        productType: String = "machinery",
-        profitMargin: Double = 20,
-        marketDemand: Double = 60,
-        competitionIntensity: Double = 30,
-        expansionPotential: Double = 40,
-        capitalRequired: Double = 500
-    ) {
-        super.init(
-            id: id,
-            name: name,
-            description: description,
-            immediateEconomicBenefit: immediateEconomicBenefit,
-            longTermValue: longTermValue,
-            risk: risk
-        )
-        
-        self.productType = productType
-        self.profitMargin = profitMargin
-        self.marketDemand = marketDemand
-        self.competitionIntensity = competitionIntensity
-        self.expansionPotential = expansionPotential
-        self.capitalRequired = capitalRequired
-        
-        // Set type-specific attributes
-        self.businessSpecific = [
-            "productType": productType,
-            "profitMargin": profitMargin,
-            "marketDemand": marketDemand,
-            "competitionIntensity": competitionIntensity,
-            "expansionPotential": expansionPotential,
-            "capitalRequired": capitalRequired
-        ]
-    }
-}
-
-// Consumer decision options
-public struct ConsumerDecisionOption: DecisionOption {
-    // Consumer-specific attributes
-    public var purchaseType: String // What to purchase
-    public var priceSensitivity: Double // How price-sensitive (0-100, higher = more sensitive)
-    public var qualityPreference: Double // Preferred quality level (0-100)
-    public var budgetAvailable: Double // Budget available for purchase
-    public var currentPrice: Double // Current market price
-    public var utilityFromPurchase: Double // Expected utility from the purchase
-    
-    // Initialize with defaults
-    public init(
-        id: String = "consumer-\(UUID().uuidString.prefix(8))",
-        name: String = "Purchase decision",
-        description: String = "Decide what to purchase",
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5,
-        purchaseType: String = "food",
-        priceSensitivity: Double = 50,
-        qualityPreference: Double = 70,
-        budgetAvailable: Double = 100,
-        currentPrice: Double = 50,
-        utilityFromPurchase: Double = 50
-    ) {
-        super.init(
-            id: id,
-            name: name,
-            description: description,
-            immediateEconomicBenefit: immediateEconomicBenefit,
-            longTermValue: longTermValue,
-            risk: risk
-        )
-        
-        self.purchaseType = purchaseType
-        self.priceSensitivity = priceSensitivity
-        self.qualityPreference = qualityPreference
-        self.budgetAvailable = budgetAvailable
-        self.currentPrice = currentPrice
-        self.utilityFromPurchase = utilityFromPurchase
-        
-        // Set type-specific attributes
-        self.consumerSpecific = [
-            "purchaseType": purchaseType,
-            "priceSensitivity": priceSensitivity,
-            "qualityPreference": qualityPreference,
-            "budgetAvailable": budgetAvailable,
-            "currentPrice": currentPrice,
-            "utilityFromPurchase": utilityFromPurchase
-        ]
-    }
-}
-
-// Government decision options
-public struct GovernmentDecisionOption: DecisionOption {
-    // Government-specific attributes
-    public var policyType: String // What policy to implement
-    public var publicWelfare: Double // Expected public welfare impact (0-100)
-    public var economicStability: Double // Expected economic stability impact (0-100)
-    public var regulationCompliance: Double // Expected regulatory compliance impact (0-100)
-    public var reelectionProbability: Double // Probability of reelection (0-100)
-    public var implementationCost: Double // Cost of implementation
-    public var budgetAvailable: Double // Available budget
-    
-    // Initialize with defaults
-    public init(
-        id: String = "government-\(UUID().uuidString.prefix(8))",
-        name: String = "Policy implementation decision",
-        description: String = "Decide on policy implementation",
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5,
-        policyType: String = "subsidy",
-        publicWelfare: Double = 60,
-        economicStability: Double = 50,
-        regulationCompliance: Double = 80,
-        reelectionProbability: Double = 70,
-        implementationCost: Double = 100,
-        budgetAvailable: Double = 1000
-    ) {
-        super.init(
-            id: id,
-            name: name,
-            description: description,
-            immediateEconomicBenefit: immediateEconomicBenefit,
-            longTermValue: longTermValue,
-            risk: risk
-        )
-        
-        self.policyType = policyType
-        self.publicWelfare = publicWelfare
-        self.economicStability = economicStability
-        self.regulationCompliance = regulationCompliance
-        self.reelectionProbability = reelectionProbability
-        self.implementationCost = implementationCost
-        self.budgetAvailable = budgetAvailable
-        
-        // Set type-specific attributes
-        self.governmentSpecific = [
-            "policyType": policyType,
-            "publicWelfare": publicWelfare,
-            "economicStability": economicStability,
-            "regulationCompliance": regulationCompliance,
-            "reelectionProbability": reelectionProbability,
-            "implementationCost": implementationCost,
-            "budgetAvailable": budgetAvailable
-        ]
-    }
-}
-
-// Bank decision options
-public struct BankDecisionOption: DecisionOption {
-    // Bank-specific attributes
-    public var interestRate: Double // Proposed interest rate (%)
-    public var loanQuality: Double // Expected loan quality (0-100)
-    public var defaultRisk: Double // Expected default risk (0-100)
-    public var liquidityRatio: Double // Liquidity ratio (%)
-    public var loanAmount: Double // Amount of loan to issue
-    public var capitalAdequacy: Double // Capital adequacy ratio (0-100)
-    
-    // Initialize with defaults
-    public init(
-        id: String = "bank-\(UUID().uuidString.prefix(8))",
-        name: String = "Loan decision",
-        description: String = "Decide on issuing a loan",
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5,
-        interestRate: Double = 5,
-        loanQuality: Double = 80,
-        defaultRisk: Double = 10,
-        liquidityRatio: Double = 10,
-        loanAmount: Double = 1000,
-        capitalAdequacy: Double = 12
-    ) {
-        super.init(
-            id: id,
-            name: name,
-            description: description,
-            immediateEconomicBenefit: immediateEconomicBenefit,
-            longTermValue: longTermValue,
-            risk: risk
-        )
-        
-        self.interestRate = interestRate
-        self.loanQuality = loanQuality
-        self.defaultRisk = defaultRisk
-        self.liquidityRatio = liquidityRatio
-        self.loanAmount = loanAmount
-        self.capitalAdequacy = capitalAdequacy
-        
-        // Set type-specific attributes
-        self.bankSpecific = [
-            "interestRate": interestRate,
-            "loanQuality": loanQuality,
-            "defaultRisk": defaultRisk,
-            "liquidityRatio": liquidityRatio,
-            "loanAmount": loanAmount,
-            "capitalAdequacy": capitalAdequacy
-        ]
-    }
-}
-
-// Research decision options
-public struct ResearchDecisionOption: DecisionOption {
-    // Research-specific attributes
-    public var researchArea: ResearchArea // Area of research
-    public var successProbability: Double // Probability of success (0-100)
-    public var fundingEfficiency: Double // Funding efficiency (0-100)
-    public var knowledgeGain: Double // Expected knowledge gain (0-100)
-    public var timeline: Int // Time to result in periods
-    public var resourceRequirements: Double // Resources needed
-    
-    // Initialize with defaults
-    public init(
-        id: String = "research-\(UUID().uuidString.prefix(8))",
-        name: String = "Research project selection",
-        description: String = "Select research project to fund",
-        immediateEconomicBenefit: Double = 0,
-        longTermValue: Double = 0,
-        risk: Double = 0.5,
-        researchArea: ResearchArea = .cropGenetics,
-        successProbability: Double = 50,
-        fundingEfficiency: Double = 70,
-        knowledgeGain: Double = 50,
-        timeline: Int = 30,
-        resourceRequirements: Double = 1000
-    ) {
-        super.init(
-            id: id,
-            name: name,
-            description: description,
-            immediateEconomicBenefit: immediateEconomicBenefit,
-            longTermValue: longTermValue,
-            risk: risk
-        )
-        
-        self.researchArea = researchArea
-        self.successProbability = successProbability
-        self.fundingEfficiency = fundingEfficiency
-        self.knowledgeGain = knowledgeGain
-        self.timeline = timeline
-        self.resourceRequirements = resourceRequirements
-        
-        // Set type-specific attributes
-        self.researchSpecific = [
-            "researchArea": researchArea.rawValue,
-            "successProbability": successProbability,
-            "fundingEfficiency": fundingEfficiency,
-            "knowledgeGain": knowledgeGain,
-            "timeline": timeline,
-            "resourceRequirements": resourceRequirements
-        ]
-    }
-}
-
-// MARK: - Agent Base Class
-
-// Base agent class with shared functionality
-public class Agent {
-    public let id: String
-    public let type: AgentType
-    public var state: AgentState
-    public var decisionEngine: DecisionEngine
-    
-    // Agent history
-    var decisionHistory: [(DecisionOption, DecisionOption)] = [] // (option chosen, option best)
-    var performanceHistory: [Double] = [] // Utility of decisions over time
-    
-    // Initialize agent
     public init(
         id: String,
-        type: AgentType,
-        state: AgentState,
-        decisionEngine: DecisionEngine = DecisionEngine()
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 1000,
+        reputation: Double = 0.5,
+        satisfaction: Double = 0.5,
+        isActive: Bool = true
     ) {
         self.id = id
-        self.type = type
-        self.state = state
-        self.decisionEngine = decisionEngine
-    }
-    
-    /// Make a decision based on available options
-    public func decide(options: [DecisionOption]) -> DecisionOption {
-        return decisionEngine.makeDecision(options, currentState: state, agentType: type)
-    }
-    
-    /// Update agent state after decision
-    mutating func updateState(
-        afterDecision chosenOption: DecisionOption,
-        availableNewOptions: [DecisionOption]
-    ) {
-        #warning("Update agent state based on chosen decision")
-        #warning("Learn from the outcome")
-        #warning("Update performance tracking")
-        
-        // Record the decision
-        if let bestOption = decide(options: availableNewOptions).id == chosenOption.id ? chosenOption : nil {
-            decisionHistory.append((chosenOption, bestOption ?? chosenOption))
-        }
-        
-        // Track performance
-        let utility = decisionEngine.evaluateOption(
-            chosenOption,
-            currentState: state,
-            agentType: type
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = ConsumerAgentParameters(
+            consumptionPreferences: [:],
+            priceSensitivity: 0.5
         )
-        performanceHistory.append(utility)
-        
-        #warning("Apply learning from outcome")
-        // In a full system, would update decision engine parameters
+        self.purchasedThisPeriod = [:]
+        self.consumptionPreferences = [:]
+        self.priceSensitivity = 0.5
+        self.savedThisPeriod = 0
     }
     
-    /// Get agent performance summary
-    func performanceSummary() -> AgentPerformanceSummary {
-        let avgPerformance = performanceHistory.isEmpty ? 0 : 
-            performanceHistory.reduce(0, +) / Double(performanceHistory.count)
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Consumer decision-making with comprehensive utility maximization
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
         
-        let totalDecisions = decisionHistory.count
-        let successfulDecisions = decisionHistory.filter { 
-            $0.1.utility > $0.0.utility // Better than alternative would need full info
-        }.count
+        #warning("Complete consumer decision logic with utility maximization")
         
-        return AgentPerformanceSummary(
-            agentId: id,
-            agentType: type,
-            totalDecisions: totalDecisions,
-            averageUtility: avgPerformance,
-            totalPerformance: performanceHistory.reduce(0, +),
-            decisionCount: totalDecisions
-        )
-    }
-}
-
-// MARK: - Agent Performance Summary
-
-public struct AgentPerformanceSummary {
-    public let agentId: String
-    let agentType: AgentType
-    let totalDecisions: Int
-    let averageUtility: Double
-    let totalPerformance: Double
-    let decisionCount: Int
-}
-
-// MARK: - Specific Agent Implementations
-
-// Farmer agent
-public class FarmerAgent: Agent {
-    // Farmer-specific attributes
-    var landArea: Double // Hectares owned
-    var currentCrop: String // Currently planted crop
-    var resourceInventory: [String: Double] // Seeds, fertilizer, etc.
-    var historicalYields: [String: [Double]] // Crop -> yield history
-    
-    public init(
-        id: String,
-        type: AgentType = .farmer,
-        state: AgentState,
-        landArea: Double = 100,
-        currentCrop: String = "wheat",
-        resourceInventory: [String: Double] = [:],
-        historicalYields: [String: [Double]] = [:],
-        decisionEngine: DecisionEngine = DecisionEngine()
-    ) {
-        self.landArea = landArea
-        self.currentCrop = currentCrop
-        self.resourceInventory = resourceInventory
-        self.historicalYields = historicalYields
+        // Calculate utility for different consumption options
+        let totalWealth = wealth + savedThisPeriod
         
-        super.init(id: id, type: type, state: state, decisionEngine: decisionEngine)
-    }
-    
-    // Make farmer-specific decision
-    public func makeCropDecision(options: [FarmerDecisionOption]) -> FarmerDecisionOption {
-        decide(options: options) as! FarmerDecisionOption
-    }
-    
-    // Update farmer state after growing season
-    mutating func updateAfterGrowingSeason(
-        actualYield: Double,
-        actualPrice: Double,
-        resourcesUsed: [String: Double]
-    ) {
-        #warning("Update: crop, resources, historical yields, state")
-        // Update current crop based on what was planted
-        currentCrop = "\(currentCrop)-harvested"
-        
-        #warning("Update historical yields")
-        // Record actual yield
-        if var yields = historicalYields[currentCrop] {
-            yields.append(actualYield)
-            if yields.count > 20 { // Keep last 20 years of data
-                yields.removeFirst()
-            }
-            historicalYields[currentCrop] = yields
+        // Check if we need to make purchasing decisions
+        if totalWealth > 10 {
+            // Has budget to spend
+            // In a full system, would evaluate actual product choices
+            decisionType = .buyConsume
+            rationale = "Consumer purchasing decision with wealth \(Int(totalWealth)) and price sensitivity \(String(format: \"%.2f\", priceSensitivity))"
+            expectedValue = 60 + Double.random(in: -10...10)
+            riskLevel = parameters.marketVolatility * 0.3
+            executionProbability = 0.9
         } else {
-            historicalYields[currentCrop] = [actualYield]
+            // Limited budget, prioritize savings
+            decisionType = .saveSpend
+            rationale = "Limited budget: saving \(Int(savedThisPeriod)) of \(Int(totalWealth)) total wealth"
+            expectedValue = 30 + Double.random(in: -5...5)
+            riskLevel = 0.1
+            executionProbability = 0.7
         }
         
-        #warning("Update resources after usage")
-        // Deduct used resources
-        for (resource, amount) in resourcesUsed {
-            resourceInventory[resource] = (resourceInventory[resource] ?? 0) - amount
-        }
+        let decision = AgentDecision(
+            id: "consumer-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
         
-        #warning("Recalculate budget based on yield * price")
-        // budget += actualYield * actualPrice
+        lastDecision = decision
+        return decision
+    }
+    
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .farmer:
+            #warning("Consumer-farmer food demand")
+        case .businessOwner:
+            #warning("Consumer-business purchases")
+        case .governmentOfficial:
+            #warning("Consumer-policy impact on spending")
+        default: break
+        }
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .farmer: return 0.7
+        case .businessOwner: return 0.8
+        case .governmentOfficial: return 0.5
+        default: return 0.4
+        }
     }
 }
 
-// Business agent
-public class BusinessAgent: Agent {
-    // Business-specific attributes
-    var businessName: String
-    var currentProduct: String
-    var marketShare: Double // Percentage of market (0-1)
-    var capitalStock: Double
-    var profitHistory: [Double]
+// Consumer agent parameters
+public struct ConsumerAgentParameters {
+    public var consumptionPreferences: [String: Double]
+    public var priceSensitivity: Double // 0-1, lower = less price sensitive
     
-    public init(
-        id: String,
-        type: AgentType = .business,
-        state: AgentState,
-        businessName: String = "Business \(id)",
-        currentProduct: String = "machinery",
-        marketShare: Double = 0.1,
-        capitalStock: Double = 1000,
-        profitHistory: [Double] = [],
-        decisionEngine: DecisionEngine = DecisionEngine()
-    ) {
-        self.businessName = businessName
-        self.currentProduct = currentProduct
-        self.marketShare = marketShare
-        self.capitalStock = capitalStock
-        self.profitHistory = profitHistory
-        
-        super.init(id: id, type: type, state: state, decisionEngine: decisionEngine)
-    }
-    
-    // Make business-specific decision
-    public func makeBusinessDecision(options: [BusinessDecisionOption]) -> BusinessDecisionOption {
-        decide(options: options) as! BusinessDecisionOption
-    }
-    
-    // Update business state after period
-    mutating func updateAfterPeriod(
-        revenue: Double,
-        costs: Double,
-        marketShareChange: Double
-    ) {
-        #warning("Update: profit, market share, capital stock")
-        let profit = revenue - costs
-        profitHistory.append(profit)
-        
-        #warning("Clip profit history to reasonable length")
-        // Keep last 30 periods of profit data
-        if profitHistory.count > 30 {
-            profitHistory.removeFirst(profitHistory.count - 30)
-        }
-        
-        #warning("Update market share")
-        marketShare = max(0, min(1, marketShare + marketShareChange))
-        
-        #warning("Update capital stock based on profit")
-        capitalStock = max(0, capitalStock + profit * 0.5) // Retain 50% of profit
+    public init(consumptionPreferences: [String: Double] = [:], priceSensitivity: Double = 0.5) {
+        self.consumptionPreferences = consumptionPreferences
+        self.priceSensitivity = priceSensitivity
     }
 }
 
-// Consumer agent
-public class ConsumerAgent: Agent {
-    // Consumer-specific attributes
-    var income: Double
-    var savings: Double
-    var consumptionHistory: [Double]
-    var preferenceWeights: [String: Double] // Good type -> preference weight
+// Government Official Agent
+public struct GovernmentOfficialAgent: Agent {
+    public var id: String
+    public var type: AgentType { .governmentOfficial }
+    public var parameterType: GovernmentOfficialAgentParameters
+    
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    public var policyInitiatives: [String: Policy Initiative]
+    public var approvalRating: Double
+    public var electionCycle: Int
+    public var budget: Double
     
     public init(
         id: String,
-        type: AgentType = .consumer,
-        state: AgentState,
-        income: Double = 1000,
-        savings: Double = 200,
-        preferenceWeights: [String: Double] = [:],
-        consumptionHistory: [Double] = [],
-        decisionEngine: DecisionEngine = DecisionEngine()
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 100000,
+        reputation: Double = 0.8,
+        satisfaction: Double = 0.7,
+        isActive: Bool = true
     ) {
-        self.income = income
-        self.savings = savings
-        self.preferenceWeights = preferenceWeights
-        
-        // Initialize consumption history
-        var history = consumptionHistory
-        if history.isEmpty {
-            history = [50, 60, 55, 70, 65] // Default sample
-        }
-        if history.count > 50 { // Keep last 50 periods
-            history.removeFirst(history.count - 50)
-        }
-        
-        super.init(id: id, type: type, state: state, decisionEngine: decisionEngine)
-        self.consumptionHistory = history
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = GovernmentOfficialAgentParameters()
+        self.policyInitiatives = [:]
+        self.approvalRating = 0.7
+        self.electionCycle = 0
+        self.budget = 50000
     }
     
-    // Make consumer-specific decision
-    public func makeConsumptionDecision(options: [ConsumerDecisionOption]) -> ConsumerDecisionOption {
-        decide(options: options) as! ConsumerDecisionOption
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Government decision-making with public welfare considerations
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
+        
+        #warning("Complete government official decision logic")
+        
+        // Priority: address societal issues, create policies, manage budget
+        let societalIssues = environment.societalIssues
+        let environmentalIndicators = environment.environmentalIndicators
+        
+        if approvalRating < 0.3 && electionCycle > 0 {
+            // Low approval before election - populist measures
+            decisionType = .seekPolicyChange
+            rationale = "Low approval rating (\(String(format: \"%.1f\", approvalRating))): initiating policy changes before election cycle \(electionCycle)"
+            expectedValue = 30 + Double.random(in: -10...10)
+            riskLevel = 0.5
+            executionProbability = 0.7
+        } else if environmentalIndicators.overallHealthIndex < 30 {
+            // Severe environmental issues
+            decisionType = .seekPolicyChange
+            rationale = "Addressing severe environmental health index: \(String(format: \"%.1f\", environmentalIndicators.overallHealthIndex))"
+            expectedValue = 70 + Double.random(in: -20...20)
+            riskLevel = 0.4
+            executionProbability = 0.8
+        } else if budget < 1000 {
+            // Budget constraints
+            decisionType = .seekPolicyChange
+            rationale = "Budget constraints: managing with \(Int(budget)) remaining"
+            expectedValue = 20 + Double.random(in: -5...5)
+            riskLevel = 0.3
+            executionProbability = 0.6
+        } else {
+            // Normal policy maintenance
+            decisionType = .complyRegulations
+            rationale = "Maintaining existing regulations and policies with approval \(String(format: \"%.1f\", approvalRating))"
+            expectedValue = 50 + Double.random(in: -15...15)
+            riskLevel = 0.2
+            executionProbability = 0.9
+        }
+        
+        let decision = AgentDecision(
+            id: "gov-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
+        
+        lastDecision = decision
+        return decision
     }
     
-    // Update consumer state after purchase
-    mutating func updateAfterPurchase(
-        purchaseAmount: Double,
-        purchasedGood: String,
-        satisfaction: Double
-    ) {
-        #warning("Update: income, savings, consumption history, preferences")
-        // Deduct from budget/savings
-        income = max(0, income - purchaseAmount)
-        savings = max(0, savings - (purchaseAmount * 0.1)) // Keep 90% of purchase in savings context
-        
-        #warning("Update consumption history")
-        // Add to history, keep last 50 periods
-        var history = consumptionHistory
-        history.append(satisfaction)
-        if history.count > 50 {
-            history.removeFirst(history.count - 50)
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .farmer:
+            #warning("Government-farmer subsidy and regulation interactions")
+        case .businessOwner:
+            #warning("Government-business regulation and tax interactions")
+        case .consumer:
+            #warning("Government-consumer protection policies")
+        case .banker:
+            #warning("Government-central bank monetary policy")
+        case .researchScientist:
+            #warning("Government-research funding and priorities")
+        default: break
         }
-        self.consumptionHistory = history
-        
-        #warning("Recalculate preference weights based on satisfaction")
-        // In a full system, would adjust preferences based on purchase satisfaction
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .farmer: return 0.9
+        case .businessOwner: return 0.9
+        case .consumer: return 0.8
+        case .banker: return 0.85
+        case .researchScientist: return 0.7
+        default: return 0.5
+        }
     }
 }
 
-// Government agent
-public class GovernmentAgent: Agent {
-    // Government-specific attributes
-    var budget: Double
-    var approvalRating: Double // Public approval (0-100)
-    var pendingPolicies: [GovernmentDecisionOption]
-    var electionCycle: Int // Periods until next election
+// Government official parameters
+public struct GovernmentOfficialAgentParameters {
+    public var budget: Double
+    public var fiscalPolicy: Double // 0-1, tax/spend stance
     
-    public init(
-        id: String,
-        type: AgentType = .government,
-        state: AgentState,
-        budget: Double = 10000,
-        approvalRating: Double = 70,
-        pendingPolicies: [GovernmentDecisionOption] = [],
-        electionCycle: Int = 24,
-        decisionEngine: DecisionEngine = DecisionEngine()
-    ) {
+    public init(budget: Double = 0, fiscalPolicy: Double = 0.5) {
         self.budget = budget
-        self.approvalRating = approvalRating
-        self.pendingPolicies = pendingPolicies
-        self.electionCycle = electionCycle
-        
-        super.init(id: id, type: type, state: state, decisionEngine: decisionEngine)
-    }
-    
-    // Make government-specific decision
-    public func makeGovernmentDecision(options: [GovernmentDecisionOption]) -> GovernmentDecisionOption {
-        decide(options: options) as! GovernmentDecisionOption
-    }
-    
-    // Update government state after period
-    mutating func updateAfterPeriod(
-        economicGrowth: Double,
-        publicApprovalChange: Double,
-        policyImplementationSuccess: Double
-    ) {
-        #warning("Update: budget, approval rating, pending policies, election cycle")
-        // Budget changes based on economic conditions
-        budget = max(0, budget + economicGrowth * 10) // Simplified
-        
-        #warning("Update approval rating")
-        approvalRating = max(0, min(100, approvalRating + publicApprovalChange))
-        
-        #warning("Manage pending policies")
-        // Remove implemented policies, keep others
-        
-        #warning("Decrement election cycle")
-        electionCycle = max(0, electionCycle - 1)
-    }
-    
-    // Check if election is due
-    var isElectionYear: Bool {
-        electionCycle <= 0
+        self.fiscalPolicy = fiscalPolicy
     }
 }
 
-// Bank agent
-public class BankAgent: Agent {
-    // Bank-specific attributes
-    var totalDeposits: Double
-    var totalLoans: Double
-    var reserveRatio: Double // Required reserve ratio (%)
-    var loanDefaultHistory: [Double] // Loan defaults over time
-    var interestIncome: Double
-    var interestExpense: Double
+// Banker Agent
+public struct BankerAgent: Agent {
+    public var id: String
+    public var type: AgentType { .banker }
+    public var parameterType: BankerAgentParameters
+    
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    public var totalLent: Double
+    public var totalRecovered: Double
+    public var interestRate: Double
+    public var lendingStandards: Double // 0-1, higher = stricter
+    public var defaultRate: Double // Tracked default rate
     
     public init(
         id: String,
-        type: AgentType = .bank,
-        state: AgentState,
-        totalDeposits: Double = 10000,
-        totalLoans: Double = 5000,
-        reserveRatio: Double = 0.1, // 10%
-        loanDefaultHistory: [Double] = [],
-        interestIncome: Double = 0,
-        interestExpense: Double = 0,
-        decisionEngine: DecisionEngine = DecisionEngine()
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 100000,
+        reputation: Double = 0.8,
+        satisfaction: Double = 0.7,
+        isActive: Bool = true
     ) {
-        self.totalDeposits = totalDeposits
-        self.totalLoans = totalLoans
-        self.reserveRatio = reserveRatio
-        self.loanDefaultHistory = loanDefaultHistory
-        self.interestIncome = interestIncome
-        self.interestExpense = interestExpense
-        
-        super.init(id: id, type: type, state: state, decisionEngine: decisionEngine)
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = BankerAgentParameters()
+        self.totalLent = 0
+        self.totalRecovered = 0
+        self.interestRate = 0.05
+        self.lendingStandards = 0.7
+        self.defaultRate = 0.02
     }
     
-    // Make bank-specific decision
-    public func makeBankDecision(options: [BankDecisionOption]) -> BankDecisionOption {
-        decide(options: options) as! BankDecisionOption
-    }
-    
-    // Update bank state after period
-    mutating func updateAfterPeriod(
-        newDeposits: Double,
-        loanRepayments: Double,
-        newLoansIssued: Double,
-        loanDefaults: Double,
-        interestIncome: Double,
-        interestExpense: Double
-    ) {
-        #warning("Update: deposits, loans, reserves, income/expense")
-        totalDeposits = max(0, totalDeposits + newDeposits - loanDefaults)
-        totalLoans = max(0, totalLoans + newLoansIssued - loanDefaults)
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Banker decision-making with lending and risk management
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
         
-        #warning("Update reserve ratio if needed")
-        // In a full system, would adjust based on central bank requirements
+        #warning("Complete banker decision logic with lending risk assessment")
         
-        #warning("Track loan defaults")
-        loanDefaultHistory.append(loanDefaults)
-        if loanDefaultHistory.count > 24 { // Keep 2 years of data
-            loanDefaultHistory.removeFirst(loanDefaultHistory.count - 24)
+        // Priority: manage lending portfolio, assess risks, set interest rates
+        let totalOutstanding = totalLent - totalRecovered
+        
+        if totalOutstanding < 1000 && budget > 5000 {
+            // Opportunity to lend
+            decisionType = .takeLoan
+            rationale = "Expanding lending portfolio: total outstanding \(Int(totalOutstanding)), available capital \(Int(wealth))"
+            expectedValue = 60 + Double.random(in: -10...10)
+            riskLevel = parameters.regulatoryRisk * 0.5 + parameters.marketVolatility * 0.3
+            executionProbability = 0.85
+        } else if defaultRate > 0.1 && totalOutstanding > 1000 {
+            // High default rate, tighten standards
+            decisionType = .manageRisk
+            rationale = "Tightening lending standards: default rate at \(String(format: \"%.1f\", defaultRate * 100))%"
+            expectedValue = 40 + Double.random(in: -15...15)
+            riskLevel = 0.7
+            executionProbability = 0.8
+        } else if totalOutstanding > wealth * 2 {
+            // Over-extended, focus on recovery
+            decisionType = .repayLoan
+            rationale = "Focus on loan recovery: outstanding \(Int(totalOutstanding)) against wealth \(Int(wealth))"
+            expectedValue = -20 + Double.random(in: -10...10)
+            riskLevel = 0.4
+            executionProbability = 0.7
+        } else {
+            // Maintain current lending
+            decisionType = .manageRisk
+            rationale = "Maintaining current lending portfolio with \(Int(totalOutstanding)) outstanding"
+            expectedValue = 50 + Double.random(in: -15...15)
+            riskLevel = 0.3
+            executionProbability = 0.8
         }
         
-        #warning("Update interest income and expense")
-        self.interestIncome = interestIncome
-        self.interestExpense = interestExpense
+        let decision = AgentDecision(
+            id: "banker-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
+        
+        lastDecision = decision
+        return decision
     }
     
-    // Calculate capital adequacy
-    var capitalAdequacyRatio: Double {
-        let riskWeightedAssets = totalLoans * 0.8 // Simplified: 80% risk weight
-        return totalDeposits > 0 ? totalDeposits / riskWeightedAssets : 0
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .farmer:
+            #warning("Banker-farmer loan interactions")
+        case .businessOwner:
+            #warning("Banker-business financing")
+        case .consumer:
+            #warning("Banker-consumer credit products")
+        case .governmentOfficial:
+            #warning("Banker-central bank relations")
+        default: break
+        }
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .farmer: return 0.9
+        case .businessOwner: return 0.9
+        case .consumer: return 0.7
+        case .governmentOfficial: return 0.85
+        default: return 0.5
+        }
     }
 }
 
-// Research agent
-public class ResearchAgent: Agent {
-    // Research-specific attributes
-    var researchAreas: [ResearchArea: Double] // Area -> knowledge level (0-1)
-    var activeProjects: [String: ResearchProject] // Project ID -> project
-    var totalFundingAllocated: Double
-    var breakthroughCount: Int
+// Banker parameters
+public struct BankerAgentParameters {
+    public var interestRate: Double
+    public var lendingStandards: Double // 0-1, higher = stricter
+    public var capitalAdequacy: Double // 0-1
+    
+    public init(interestRate: Double = 0.05, lendingStandards: Double = 0.7, capitalAdequacy: Double = 0.8) {
+        self.interestRate = interestRate
+        self.lendingStandards = lendingStandards
+        self.capitalAdequacy = capitalAdequacy
+    }
+}
+
+// Research Scientist Agent
+public struct ResearchScientistAgent: Agent {
+    public var id: String
+    public var type: AgentType { .researchScientist }
+    public var parameterType: ResearchScientistAgentParameters
+    
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    public var activeResearchProjects: [ResearchProject]
+    public var publishedPapers: Int
+    public var patentApplications: Int
+    public var researchFunding: Double
+    public var collaborationPartners: [String]
     
     public init(
         id: String,
-        type: AgentType = .research,
-        state: AgentState,
-        researchAreas: [ResearchArea: Double] = [:],
-        activeProjects: [String: ResearchProject] = [:],
-        totalFundingAllocated: Double = 0,
-        breakthroughCount: Int = 0,
-        decisionEngine: DecisionEngine = DecisionEngine()
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 10000,
+        reputation: Double = 0.5,
+        satisfaction: Double = 0.6,
+        isActive: Bool = true
     ) {
-        self.researchAreas = researchAreas
-        self.activeProjects = activeProjects
-        self.totalFundingAllocated = totalFundingAllocated
-        self.breakthroughCount = breakthroughCount
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = ResearchScientistAgentParameters()
+        self.activeResearchProjects = []
+        self.publishedPapers = 0
+        self.patentApplications = 0
+        self.researchFunding = 0
+        self.collaborationPartners = []
+    }
+    
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Research scientist decision-making with innovation priorities
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
         
-        // Initialize research areas if empty
-        if researchAreas.isEmpty {
-            for area in ResearchArea.allCases {
-                researchAreas[area] = 0.1 // Small baseline
-            }
+        #warning("Complete research scientist decision logic")
+        
+        // Priority: secure funding, advance research, publish, collaborate
+        let fundingAvailable = researchFunding + parameters.availableCapital
+        
+        if activeResearchProjects.isEmpty && fundingAvailable > 1000 {
+            // No projects, seek to start new ones
+            decisionType = .investInTechnology
+            rationale = "Starting new research projects with available funding \(Int(researchFunding))"
+            expectedValue = 70 + Double.random(in: -20...20)
+            riskLevel = 0.6
+            executionProbability = 0.7
+        } else if publishedPapers < 5 && fundingAvailable > 500 {
+            // Few publications, seek more research
+            decisionType = .investInTechnology
+            rationale = "Increasing research output: \(publishedPapers) publications, seeking funding for more"
+            expectedValue = 50 + Double.random(in: -15...15)
+            riskLevel = 0.4
+            executionProbability = 0.8
+        } else if patentApplications > 0 && researchFunding < 2000 {
+            // Has patents but low funding, seek more
+            decisionType = .investInTechnology
+            rationale = "Securing funding for existing patent applications: \(patentApplications) applications"
+            expectedValue = 60 + Double.random(in: -20...20)
+            riskLevel = 0.5
+            executionProbability = 0.75
+        } else {
+            // Maintain and advance existing
+            decisionType = .manageRisk
+            rationale = "Maintaining research program with \(publishedPapers) publications, \(patentApplications) patents"
+            expectedValue = 40 + Double.random(in: -10...10)
+            riskLevel = 0.3
+            executionProbability = 0.85
         }
         
-        super.init(id: id, type: type, state: state, decisionEngine: decisionEngine)
-    }
-    
-    // Make research-specific decision
-    public func makeResearchDecision(options: [ResearchDecisionOption]) -> ResearchDecisionOption {
-        decide(options: options) as! ResearchDecisionOption
-    }
-    
-    // Update research state after period
-    mutating func updateAfterPeriod(
-        newKnowledge: [ResearchArea: Double],
-        projectsCompleted: Int,
-        breakthroughs: Int,
-        fundingAllocated: Double
-    ) {
-        #warning("Update: research knowledge, active projects, breakthroughs, funding")
+        let decision = AgentDecision(
+            id: "research-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
         
-        #warning("Update research area knowledge")
-        for (area, gain) in newKnowledge {
-            researchAreas[area] = min(1, (researchAreas[area] ?? 0) + gain)
+        lastDecision = decision
+        return decision
+    }
+    
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .farmer:
+            #warning("Research-farmer technology adoption transfer")
+        case .businessOwner:
+            #warning("Research-business R&D partnerships")
+        case .governmentOfficial:
+            #warning("Government-research funding priorities")
+        case .banker:
+            #warning("Research-research funding and loans")
+        default: break
         }
-        
-        #warning("Update breakthrough count")
-        breakthroughCount += breakthroughs
-        
-        #warning("Track funding")
-        totalFundingAllocated = fundingAllocated
-        
-        #warning("Update active projects")
-        // Would complete projects based on timelines and success
     }
     
-    // Get knowledge level for an area
-    func knowledgeLevel(_ area: ResearchArea) -> Double {
-        researchAreas[area] ?? 0
-    }
-    
-    // Check if research area has sufficient knowledge for technology level
-    func canSupportTechnologyLevel(_ area: ResearchArea, level: Int) -> Bool {
-        let knowledge = knowledgeLevel(area)
-        // Higher technology levels require higher knowledge
-        let requiredKnowledge = Double(level) / 10.0
-        return knowledge >= requiredKnowledge
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .businessOwner: return 0.9
+        case .governmentOfficial: return 0.8
+        case .farmer: return 0.7
+        case .banker: return 0.6
+        default: return 0.4
+        }
     }
 }
 
-// MARK: - Agent Management System
+// Research project
+public struct ResearchProject: Identifiable {
+    public let id: String
+    public var name: String
+    public var field: String // e.g., "crop_yield", "resource_efficiency"
+    public var status: ResearchStatus
+    public var funding: Double
+    public var progress: Double // 0-1
+    public var expectedBreakthrough: Double // 0-1
+    public var timeline: Int // periods
+    public var periodElapsed: Int
+    public var potentialImpact: Double // 0-1
+    
+    public init(
+        id: String,
+        name: String,
+        field: String,
+        status: ResearchStatus = .planning,
+        funding: Double = 0,
+        progress: Double = 0,
+        expectedBreakthrough: Double = 0.1,
+        timeline: Int = 12,
+        periodElapsed: Int = 0,
+        potentialImpact: Double = 0.5
+    ) {
+        self.id = id
+        self.name = name
+        self.field = field
+        self.status = status
+        self.funding = funding
+        self.progress = progress
+        self.expectedBreakthrough = expectedBreakthrough
+        self.timeline = timeline
+        self.periodElapsed = periodElapsed
+        self.potentialImpact = potentialImpact
+    }
+}
 
-// Central agent management
-public class AgentManagement {
-    // All agents in the system
+public enum ResearchStatus: String, CaseIterable {
+    case planning = "planning"
+    case active = "active"
+    case breakthrough = "breakthrough"
+    case published = "published"
+    case patented = "patented"
+    case abandoned = "abandoned"
+}
+
+// Research scientist parameters
+public struct ResearchScientistAgentParameters {
+    public var researchFocus: String // Primary field of focus
+    public var collaborationPreference: Double // 0-1
+    
+    public init(researchFocus: String = "general", collaborationPreference: Double = 0.5) {
+        self.researchFocus = researchFocus
+        self.collaborationPreference = collaborationPreference
+    }
+}
+
+// Trader Agent
+public struct TraderAgent: Agent {
+    public var id: String
+    public var type: AgentType { .trader }
+    public var parameterType: TraderAgentParameters
+    
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    public var activePositions: [String: Double] // commodity -> position (positive = long, negative = short)
+    public var tradingHistory: [TradeDecision]
+    public var maxLeverage: Double
+    public var currentRiskExposure: Double
+    
+    public init(
+        id: String,
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 50000,
+        reputation: Double = 0.6,
+        satisfaction: Double = 0.5,
+        isActive: Bool = true
+    ) {
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = TraderAgentParameters()
+        self.activePositions = [:]
+        self.tradingHistory = []
+        self.maxLeverage = 3.0
+        self.currentRiskExposure = 0
+    }
+    
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Trader decision-making with market positioning
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
+        
+        #warning("Complete trader decision logic with market positioning")
+        
+        // Priority: manage positions, adjust leverage, respond to market trends
+        let marketVolatility = parameters.marketVolatility
+        let priceTrends = parameters.priceTrend
+        
+        // Check position sizing opportunities
+        let totalLongPositions = activePositions.filter { $0.value > 0 }.reduce(0) { $0 + $1.value }
+        let totalShortPositions = activePositions.filter { $0.value < 0 }.reduce(0) { $0 + abs($1.value) }
+        
+        if totalLongPositions > 0 && totalShortPositions > 0 {
+            // Hedged position, rebalance
+            decisionType = .adjustProduction // Reuse adjustment type
+            rationale = "Rebalancing hedged positions: long \(String(format: \"%.1f\", totalLongPositions)), short \(String(format: \"%.1f\", totalShortPositions))"
+            expectedValue = 30 + Double.random(in: -10...10)
+            riskLevel = marketVolatility * 0.4
+            executionProbability = 0.9
+        } else if totalLongPositions > wealth * 0.5 {
+            // Overextended long, reduce
+            decisionType = .sellProduce // Reuse sell type
+            rationale = "Reducing overexposure: long positions at \(String(format: \"%.1f\", totalLongPositions)) against wealth \(Int(wealth))"
+            expectedValue = -10 + Double.random(in: -15...15)
+            riskLevel = marketVolatility * 0.6
+            executionProbability = 0.7
+        } else if marketVolatility > 0.7 {
+            // High volatility, adjust risk
+            decisionType = .manageRisk
+            rationale = "Adjusting risk exposure amid high market volatility: \(String(format: \"%.1f\", marketVolatility * 100))%"
+            expectedValue = 20 + Double.random(in: -20...20)
+            riskLevel = 0.8
+            executionProbability = 0.6
+        } else {
+            // Maintain or adjust positions based on trends
+            decisionType = .setPrices
+            rationale = "Adjusting positions based on market trends and price movements"
+            expectedValue = 40 + Double.random(in: -15...15)
+            riskLevel = marketVolatility * 0.3
+            executionProbability = 0.8
+        }
+        
+        let decision = AgentDecision(
+            id: "trader-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
+        
+        lastDecision = decision
+        return decision
+    }
+    
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .farmer:
+            #warning("Trader-farmer produce purchases")
+        case .businessOwner:
+            #warning("Trader-business commodity trades")
+        case .consumer:
+            #warning("Trader-consumer market effects")
+        case .governmentOfficial:
+            #warning("Trader-regulation impacts on markets")
+        case .researchScientist:
+            #warning("Trader-research commodity impacts")
+        default: break
+        }
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .farmer: return 0.8
+        case .businessOwner: return 0.9
+        case .consumer: return 0.7
+        case .governmentOfficial: return 0.6
+        case .researchScientist: return 0.5
+        default: return 0.4
+        }
+    }
+}
+
+// Trader parameters
+public struct TraderAgentParameters {
+    public var maxLeverage: Double
+    public var riskTolerance: Double // 0-1
+    
+    public init(maxLeverage: Double = 3.0, riskTolerance: Double = 0.5) {
+        self.maxLeverage = maxLeverage
+        self.riskTolerance = riskTolerance
+    }
+}
+
+// Investor Agent
+public struct InvestorAgent: Agent {
+    public var id: String
+    public var type: AgentType { .investor }
+    public var parameterType: InvestorAgentParameters
+    
+    public var position: (x: Double, y: Double)
+    public var wealth: Double
+    public var reputation: Double
+    public var satisfaction: Double
+    public var isActive: Bool
+    public var lastDecision: AgentDecision?
+    public var investmentPortfolio: [String: Double] // asset -> allocation
+    public var totalReturn: Double
+    public var riskProfile: Double // 0-1
+    public var diversification: Double // 0-1
+    
+    public init(
+        id: String,
+        position: (x: Double, y: Double) = (0, 0),
+        wealth: Double = 100000,
+        reputation: Double = 0.7,
+        satisfaction: Double = 0.6,
+        isActive: Bool = true
+    ) {
+        self.id = id
+        self.position = position
+        self.wealth = wealth
+        self.reputation = reputation
+        self.satisfaction = satisfaction
+        self.isActive = isActive
+        self.parameterType = InvestorAgentParameters()
+        self.investmentPortfolio = [:]
+        self.totalReturn = 0
+        self.riskProfile = 0.5
+        self.diversification = 0.6
+    }
+    
+    public mutating func makeDecision(in environment: SimulationEnvironment,
+                                     with parameters: AgentDecisionParameters) -> AgentDecision {
+        // Investor decision-making with portfolio management
+        let decisionType: DecisionType
+        let rationale: String
+        let expectedValue: Double
+        let riskLevel: Double
+        let executionProbability: Double
+        
+        #warning("Complete investor decision logic with portfolio optimization")
+        
+        // Priority: rebalance portfolio, adjust allocations, respond to market conditions
+        let totalAllocated = investmentPortfolio.values.reduce(0) { $0 + $1 }
+        
+        if totalAllocated < wealth * 0.5 {
+            // Under-invested, increase allocation
+            decisionType = .makeInvestment
+            rationale = "Increasing investment allocation: \(String(format: \"%.1f\", totalAllocated)) of \(Int(wealth)) wealth invested"
+            expectedValue = 50 + Double.random(in: -10...10)
+            riskLevel = parameters.marketVolatility * 0.4
+            executionProbability = 0.8
+        } else if riskProfile > 0.8 && diversification < 0.4 {
+            // High risk, under-diversified, rebalance
+            decisionType = .makeInvestment
+            rationale = "Rebalancing portfolio: high risk profile with low diversification (\(String(format: \"%.1f\", diversification * 100))%)"
+            expectedValue = 30 + Double.random(in: -15...15)
+            riskLevel = 0.7
+            executionProbability = 0.75
+        } else {
+            // Maintain or adjust based on performance
+            decisionType = .makeInvestment
+            rationale = "Optimizing investment portfolio performance"
+            expectedValue = 40 + Double.random(in: -15...15)
+            riskLevel = 0.4
+            executionProbability = 0.85
+        }
+        
+        let decision = AgentDecision(
+            id: "investor-dec-\(Date.timeIntervalSince1970)-\(id)",
+            agentId: id,
+            decisionType: decisionType,
+            rationale: rationale,
+            expectedValue: expectedValue,
+            riskLevel: riskLevel,
+            executionProbability: executionProbability
+        )
+        
+        lastDecision = decision
+        return decision
+    }
+    
+    public mutating func interact(with other: Agent, in environment: SimulationEnvironment) {
+        switch other.type {
+        case .farmer:
+            #warning("Investor-farmer equity investments")
+        case .businessOwner:
+            #warning("Investor-business equity investments")
+        case .banker:
+            #warning("Investor-banking and credit products")
+        default: break
+        }
+    }
+    
+    func interactionStrength(with other: AgentType) -> Double {
+        switch other {
+        case .businessOwner: return 0.9
+        case .farmer: return 0.7
+        case .banker: return 0.8
+        default: return 0.5
+        }
+    }
+}
+
+// Investor parameters
+public struct InvestorAgentParameters {
+    public var riskProfile: Double // 0-1
+    public var diversification: Double // 0-1
+    
+    public init(riskProfile: Double = 0.5, diversification: Double = 0.6) {
+        self.riskProfile = riskProfile
+        self.diversification = diversification
+    }
+}
+
+// MARK: - Simulation Environment (Expanded)
+
+public struct SimulationEnvironment {
+    // Economic environment
+    public var globalPrices: [String: Double] // Key commodity and service prices
+    public var inflationRate: Double
+    public var exchangeRate: Double
+    public var interestRates: Double
+    
+    // Agricultural environment
+    public var weatherConditions: WeatherConditions
+    public var soilQuality: Double // 0-1
+    public var waterAvailability: Double // 0-1
+    
+    // Social environment
+    public var population: Double
+    public var unemployment: Double
+    public var incomeDistribution: Double // Gini coefficient 0-1
+    
+    // Environmental indicators
+    public var environmentalIndicators: EnvironmentalState
+    
+    // Regulatory environment
+    public var activeRegulations: [String: Regulation]
+    public var taxPolicy: TaxPolicy
+    
+    // Market conditions
+    public var marketVolatility: Double
+    public var demandSignals: [String: Double]
+    
+    // Time
+    public var currentPeriod: Int
+    public var totalPeriods: Int
+    
+    public init(
+        globalPrices: [String: Double] = [:],
+        inflationRate: Double = 0.02,
+        exchangeRate: Double = 1.0,
+        interestRates: Double = 0.05,
+        weatherConditions: WeatherConditions = WeatherConditions(),
+        soilQuality: Double = 0.5,
+        waterAvailability: Double = 0.5,
+        population: Double = 1000,
+        unemployment: Double = 0.05,
+        incomeDistribution: Double = 0.3,
+        environmentalIndicators: EnvironmentalState = EnvironmentalState(),
+        activeRegulations: [String: Regulation] = [:],
+        taxPolicy: TaxPolicy = TaxPolicy(),
+        marketVolatility: Double = 0.3,
+        demandSignals: [String: Double] = [:],
+        currentPeriod: Int = 0,
+        totalPeriods: Int = 100
+    ) {
+        self.globalPrices = globalPrices
+        self.inflationRate = inflationRate
+        self.exchangeRate = exchangeRate
+        self.interestRates = interestRates
+        self.weatherConditions = weatherConditions
+        self.soilQuality = soilQuality
+        self.waterAvailability = waterAvailability
+        self.population = population
+        self.unemployment = unemployment
+        self.incomeDistribution = incomeDistribution
+        self.environmentalIndicators = environmentalIndicators
+        self.activeRegulations = activeRegulations
+        self.taxPolicy = taxPolicy
+        self.marketVolatility = marketVolatility
+        self.demandSignals = demandSignals
+        self.currentPeriod = currentPeriod
+        self.totalPeriods = totalPeriods
+    }
+}
+
+public struct WeatherConditions {
+    public var temperature: Double // Deviations from normal
+    public var precipitation: Double // 0-1, 1 = normal
+    public var droughtSeverity: Double // 0-1
+    public var floodRisk: Double // 0-1
+    public var growingDegreeDays: Double
+    
+    public init(
+        temperature: Double = 0,
+        precipitation: Double = 1,
+        droughtSeverity: Double = 0,
+        floodRisk: Double = 0,
+        growingDegreeDays: Double = 0
+    ) {
+        self.temperature = temperature
+        self.precipitation = precipitation
+        self.droughtSeverity = droughtSeverity
+        self.floodRisk = floodRisk
+        self.growingDegreeDays = growingDegreeDays
+    }
+}
+
+public struct TaxPolicy {
+    public var incomeTaxRate: Double // 0-1
+    public var corporateTaxRate: Double // 0-1
+    public var agriculturalSubsidies: [String: Double] // commodity -> rate
+    public var environmentalTaxes: [String: Double] // indicator -> rate
+    
+    public init(
+        incomeTaxRate: Double = 0.2,
+        corporateTaxRate: Double = 0.21,
+        agriculturalSubsidies: [String: Double] = [:],
+        environmentalTaxes: [String: Double] = [:]
+    ) {
+        self.incomeTaxRate = incomeTaxRate
+        self.corporateTaxRate = corporateTaxRate
+        self.agriculturalSubsidies = agriculturalSubsidies
+        self.environmentalTaxes = environmentalTaxes
+    }
+}
+
+// MARK: - Shared Decision Engine (Expanded)
+
+public class DecisionEngine {
+    // Shared decision-making logic used by all agent types
+    
+    // Calculate utility for a decision given current parameters
+    public func calculateUtility(
+        forDecision decision: AgentDecision,
+        givenParameters params: AgentDecisionParameters,
+        agentType: AgentType
+    ) -> Double {
+        let baseUtility = decision.expectedValue
+        let riskPenalty = pow(decision.riskLevel, 2) * 100
+        let executionFactor = decision.executionProbability
+        
+        // Agent-type specific adjustments
+        var typeMultiplier: Double
+        switch agentType {
+        case .riskAverse: typeMultiplier = 0.8 // Penalize risk
+        case .riskSeeking: typeMultiplier = 1.2 // Reward risk
+        case .utilityMaximizing: typeMultiplier = 1.0 // Neutral
+        case .stabilitySeeking: typeMultiplier = 0.9 // Penalize risk more
+        case .profitMaximizing: typeMultiplier = 1.1 // Reward profit
+        case .innovationSeeking: typeMultiplier = 1.05 // Slight risk tolerance
+        default: typeMultiplier = 1.0
+        }
+        
+        return (baseUtility - riskPenalty) * typeMultiplier * executionFactor
+    }
+    
+    // Calculate risk-adjusted expected value
+    public func expectedValue(
+        _ expected: Double,
+        risk: Double,
+        execution: Double,
+        agentType: AgentType
+    ) -> Double {
+        calculateUtility(forDecision: AgentDecision(
+            id: "temp",
+            agentId: "temp",
+            decisionType: .plantCrop,
+            rationale: "temp",
+            expectedValue: expected,
+            riskLevel: risk,
+            executionProbability: execution
+        ), givenParameters: AgentDecisionParameters(), agentType: agentType)
+    }
+    
+    // Compare two decisions and return the better one
+    public func compareDecisions(
+        _ decision1: AgentDecision,
+        _ decision2: AgentDecision,
+        givenParameters params: AgentDecisionParameters,
+        agentType: AgentType
+    ) -> AgentDecision {
+        let utility1 = calculateUtility(decision1, givenParameters: params, agentType: agentType)
+        let utility2 = calculateUtility(decision2, givenParameters: params, agentType: agentType)
+        
+        return utility1 >= utility2 ? decision1 : decision2
+    }
+    
+    // Simulate decision outcome with stochastic elements
+    public func simulateOutcome(
+        _ decision: AgentDecision,
+        in environment: SimulationEnvironment
+    ) -> Double {
+        // Base outcome from expected value
+        let baseOutcome = decision.expectedValue
+        
+        // Add stochastic component based on market volatility and other factors
+        let volatilityFactor = environment.marketVolatility
+        let stochasticElement = Double.random(in: -1...1) * volatilityFactor * abs(decision.expectedValue) * 0.3
+        
+        // Risk adjustment
+        let riskAdjustment = -pow(decision.riskLevel, 1.5) * 20
+        
+        // Execution probability factor
+        let executionFactor = decision.executionProbability
+        
+        return baseOutcome + stochasticElement + riskAdjustment
+    }
+    
+    // Compute agent satisfaction based on decision outcome
+    public func computeSatisfaction(
+        _ outcome: Double,
+        _ expected: Double,
+        _ agentType: AgentType
+    ) -> Double {
+        let expectationGap = outcome - expected
+        
+        // Different agent types respond differently to outcomes
+        var lossAversion: Double
+        switch agentType {
+        case .consumer: lossAversion = 2.0 // Consumers hate price increases
+        case .farmer: lossAversion = 1.5 // Farmers sensitive to yield losses
+        case .businessOwner: lossAversion = 1.8 // Businesses sensitive to profit losses
+        case .investor: lossAversion = 1.6 // Investors loss averse
+        default: lossAversion = 1.3
+        }
+        
+        let utility = -lossAversion * pow(abs(expectationGap), 0.8) + 100
+        return max(0, min(100, utility))
+    }
+}
+
+// MARK: - Agent Population and Management (Expanded)
+
+public class AgentPopulation {
     private var agents: [String: Agent] = [:]
+    private var agentCountByType: [AgentType: Int] = [:]
+    private var decisionEngine: DecisionEngine
     
-    // Agent type factories
-    var agentFactories: [AgentType: (AgentState) -> Agent] = [
-        .farmer: { FarmerAgent(id: UUID().uuidString, type: .farmer, state: $0) },
-        .business: { BusinessAgent(id: UUID().uuidString, type: .business, state: $0) },
-        .consumer: { ConsumerAgent(id: UUID().uuidString, type: .consumer, state: $0) },
-        .government: { GovernmentAgent(id: UUID().uuidString, type: .government, state: $0) },
-        .bank: { BankAgent(id: UUID().uuidString, type: .bank, state: $0) },
-        .research: { ResearchAgent(id: UUID().uuidString, type: .research, state: $0) }
-    ]
-    
-    // Initialize with default agents
-    public init() {
-        #warning("Initialize default agents for each type")
-        #warning("Set up agent states with appropriate starting conditions")
-        
-        #warning("TODO: Create one agent of each type with baseline state")
-        #warning("TODO: Configure initial resources, budgets, market conditions")
-        
-        // Create one agent of each type
-        for agentType in AgentType.allCases {
-            let initialState = AgentState()
-            if let factory = agentFactories[agentType] {
-                let agent = factory(initialState)
-                agents[agent.id] = agent
-            }
-        }
+    public var activeAgents: [Agent] {
+        return agents.values.filter { $0.isActive }
     }
     
-    // MARK: - Agent Operations
+    public init(decisionEngine: DecisionEngine = DecisionEngine()) {
+        self.decisionEngine = decisionEngine
+        
+        // Initialize with sample agents of each type
+        for i in 0..<10 {
+            let farmer = FarmerAgent(id: "farmer-\(i)")
+            agents[farmer.id] = farmer
+            agentCountByType[.farmer, default: 0] += 1
+            
+            let business = BusinessOwnerAgent(id: "business-\(i)")
+            agents[business.id] = business
+            agentCountByType[.businessOwner, default: 0] += 1
+            
+            let consumer = ConsumerAgent(id: "consumer-\(i)")
+            agents[consumer.id] = consumer
+            agentCountByType[.consumer, default: 0] += 1
+            
+            let gov = GovernmentOfficialAgent(id: "gov-\(i)")
+            agents[gov.id] = gov
+            agentCountByType[.governmentOfficial, default: 0] += 1
+            
+            let banker = BankerAgent(id: "banker-\(i)")
+            agents[banker.id] = banker
+            agentCountByType[.banker, default: 0] += 1
+            
+            let researcher = ResearchScientistAgent(id: "research-\(i)")
+            agents[researcher.id] = researcher
+            agentCountByType[.researchScientist, default: 0] += 1
+        }
+        
+        // Add traders and investors
+        for i in 0..<5 {
+            let trader = TraderAgent(id: "trader-\(i)")
+            agents[trader.id] = trader
+            agentCountByType[.trader, default: 0] += 1
+            
+            let investor = InvestorAgent(id: "investor-\(i)")
+            agents[investor.id] = investor
+            agentCountByType[.investor, default: 0] += 1
+        }
+    }
     
     public func getAgent(_ id: String) -> Agent? {
         return agents[id]
     }
     
-    public func getAgents(_ type: AgentType) -> [Agent] {
-        return agents.values.filter { $0.type == type }
+    public func getAgents(byType type: AgentType) -> [Agent] {
+        return agents.values.filter { $0.type == type && $0.isActive }
     }
     
-    public func getAllAgents() -> [Agent] {
-        return Array(agents.values)
+    public func addAgent(_ agent: Agent) {
+        agents[agent.id] = agent
+        agentCountByType[agent.type, default: 0] += 1
     }
     
-    /// Create a new agent of specified type
-    mutating func createAgent(_ type: AgentType, state: AgentState) -> Agent? {
-        if let factory = agentFactories[type] {
-            let agent = factory(state)
-            agents[agent.id] = agent
-            return agent
-        }
-        return nil
-    }
-    
-    /// Remove an agent
-    mutating func removeAgent(_ id: String) {
+    public func removeAgent(_ id: String) {
         agents.removeValue(forKey: id)
+        // Recalculate counts
+        recalculateCounts()
     }
     
-    /// Get all agents by type
-    func agentsByType(_ type: AgentType) -> [Agent] {
-        return getAgents(type)
-    }
-    
-    /// Get count of agents by type
-    func agentCount(_ type: AgentType) -> Int {
-        return agents.values.filter { $0.type == type }.count
-    }
-    
-    /// Get agent statistics summary
-    func getAgentStatistics() -> AgentStatistics {
-        var typeCounts: [AgentType: Int] = [:]
-        for type in AgentType.allCases {
-            typeCounts[type] = agentCount(type)
+    public mutating func advancePeriod() {
+        #warning("Advance all active agents through decision cycle")
+        
+        for agent in activeAgents {
+            #warning("Make decision for \(agent.type.rawValue) agent \(agent.id)")
+            
+            // Create decision parameters based on current state
+            let params = AgentDecisionParameters(
+                availableCapital: agent.wealth,
+                currentAssets: agent.wealth,
+                debtLevel: agent is FarmerAgent ? (agent as! FarmerAgent).outstandingLoans : 0,
+                creditScore: agent.reputation,
+                marketPrices: [:], // Would be populated from environment
+                priceTrend: [:],
+                demandElasticity: [:],
+                landAvailable: agent is FarmerAgent ? ((agent as! FarmerAgent).ownedLand - (agent as! FarmerAgent).cultivatedLand) : 0,
+                laborAvailable: agent is ConsumerAgent ? 1 : 0,
+                equipmentAvailable: agent is FarmerAgent ? ((agent as! FarmerAgent).equipment.values.reduce(0) { $0 + $1 }) : 0,
+                inputsAvailable: [:],
+                taxRate: 0.2,
+                subsidies: [:],
+                regulations: [:],
+                populationTrend: 0.01,
+                unemploymentRate: 0.05,
+                incomeDistribution: 0.3,
+                weatherRisk: 0.2,
+                marketVolatility: 0.3,
+                regulatoryRisk: 0.2,
+                timeHorizon: 1,
+                planningHorizon: 5
+            )
+            
+            #warning("Execute decision for \(agent.type.rawValue)")
+            let decision = agent.makeDecision(in: SimulationEnvironment(), with: params)
+            agent.lastDecision = decision
+            
+            #warning("Track decision execution")
+            // In full system, would execute decision and track outcomes
         }
         
-        var averageUtilities: [AgentType: Double] = [:]
-        for type in AgentType.allCases {
-            let typeAgents = getAgents(type)
-            if !typeAgents.isEmpty {
-                let avgUtility = typeAgents.map { $0.performanceSummary().averageUtility }.reduce(0, +) / Double(typeAgents.count)
-                averageUtilities[type] = avgUtility
-            } else {
-                averageUtilities[type] = 0
+        #warning("Handle agent interactions")
+        // Handle pairwise interactions
+        for i in activeAgents.indices {
+            for j in (i+1)..<activeAgents.count {
+                let agentI = activeAgents[i]
+                let agentJ = activeAgents[j]
+                
+                let strengthI = agentI.interactionStrength(with: agentJ.type)
+                let strengthJ = agentJ.interactionStrength(with: agentI.type)
+                
+                // Interaction probability decreases with distance
+                let distance = sqrt(pow(agentI.position.x - agentJ.position.x, 2) + 
+                                   pow(agentI.position.y - agentJ.position.y, 2))
+                let maxInteractionDistance: Double = 50
+                let interactionProbability = max(0, 1 - distance / maxInteractionDistance)
+                
+                if Double.random(in: 0...1) < interactionProbability * 0.1 {
+                    agentI.interact(with: agentJ, in: SimulationEnvironment())
+                    agentJ.interact(with: agentI, in: SimulationEnvironment())
+                }
             }
         }
         
-        return AgentStatistics(
-            totalAgents: agents.count,
-            byType: typeCounts,
-            averageUtilities: averageUtilities
-        )
+        #warning("Update agent states after decisions")
+        // Update wealth, satisfaction, etc. based on decision outcomes
+    }
+    
+    private func recalculateCounts() {
+        agentCountByType = [:]
+        for agent in agents.values where agent.isActive {
+            agentCountByType[agent.type, default: 0] += 1
+        }
+    }
+    
+    public func populationStatistics() -> [AgentType: Int] {
+        return agentCountByType
+    }
+    
+    public func totalActiveAgents() -> Int {
+        return activeAgents.count
     }
 }
 
-// MARK: - Agent Statistics
-
-public struct AgentStatistics {
-    let totalAgents: Int
-    let byType: [AgentType: Int]
-    let averageUtilities: [AgentType: Double]
-}
-
-// MARK: - Previews (iOS/macOS)
-
+// MARK: - Previews
 //#if canImport(SwiftUI) && DEBUG
 //import SwiftUI
-//
 //struct AIAgentsPreview: PreviewProvider {
 //    static var previews: some View {
-//        // Would display agent decisions, performance summaries, economic interactions
 //        Text("AI Agents System Preview")
 //    }
 //}

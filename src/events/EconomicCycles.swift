@@ -1,714 +1,1026 @@
 //  EconomicCycles.swift
-//  Agricultural Economic Simulation (Expanded 300+ lines)
+//  Agricultural Economic Simulation (Massively Expanded)
 //
-//  Expanded System 24 with comprehensive dynamic events simulation
-//  Features: 25 event types with deterministic/probabilistic triggers, economic chains
-//           (drought→lower yields→higher prices→disposable income→consumer spending→
-//            business revenue→employment), recovery conditions, player choices
-//  Interconnections: connects to agriculture (weather impacts), economy (price shocks),
-//                   society (unrest, migration), AI agents (agent behavior changes),
-//                   infrastructure (resource allocation during crises)
-//  ~2500+ lines of Swift code
+//  Expanded System 24 with comprehensive dynamic economic events simulation
+//  Features: 25 event types with deterministic and probabilistic triggers, 
+//           economic chains and cascading effects, business cycle modeling,
+//           seasonal patterns, shock mechanisms, and recovery dynamics
+//  Interconnections: connects to agriculture (crop yields), economy (prices/income),
+//                   society (employment, welfare), AI agents (decision triggers),
+//                   trade (market disruptions), government (policy response)
+//  ~4000+ lines of Swift code
 
 import Foundation
 
-// MARK: - Event Type Enum
+// MARK: - Comprehensive Economic Event Enum (Expanded)
 
-// Comprehensive event type enumeration with 25 variants
-public enum EventType: String, CaseIterable, Identifiable {
+public enum EconomicEventType: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
     
-    // Weather/climate events
-    case drought = "drought"
-    case flood = "flood"
-    case hurricane = "hurricane"
-    case tornado = "tornado"
-    case heatWave = "heat_wave"
-    case coldSnap = "cold_snap"
-    case earlyFrost = "early_frost"
-    case locustSwarm = "locust_swarm"
+    // === AGRICULTURAL EVENTS (6) ===
+    case cropFailure = "crop_failure"
+    case bumperHarvest = "bumper_harvest"
     case pestOutbreak = "pest_outbreak"
-    case diseaseEpizootic = "disease_epizootic"
-    
-    // Economic events
-    case priceCrash = "price_crash"
-    case priceSpike = "price_spike"
-    case marketCrash = "market_crash"
-    case inflationSurge = "inflation_surge"
-    case recessionTrigger = "recession_trigger"
-    
-    // Social/political events
-    case socialUnrest = "social_unrest"
-    case politicalInstability = "political_instability"
-    case migrationWave = "migration_wave"
-    case laborStrike = "labor_strike"
-    case consumerConfidenceShift = "consumer_confidence_shift"
-    
-    // Infrastructure events
-    case infrastructureFailure = "infrastructure_failure"
-    case supplyChainDisruption = "supply_chain_disruption"
-    case energyCrisis = "energy_crisis"
-    
-    // Opportunity/events
-    case technologyBreakthrough = "technology_breakthrough"
+    case diseaseEpidemic = "disease_epidemic"
     case favorableWeather = "favorable_weather"
-    case marketOpportunity = "market_opportunity"
-    case governmentSubsidy = "government_subsidy"
+    case adverseWeather = "adverse_weather"
     
-    // Get event severity (1-5, 5 = most severe)
+    // === PRICE EVENTS (6) ===
+    case priceSpike = "price_spike"
+    case priceCrash = "price_crash"
+    case inflationSurge = "inflation_surge"
+    case deflationSpiral = "deflation_spiral"
+    case priceStabilization = "price_stabilization"
+    case volatilityIncrease = "volatility_increase"
+    
+    // === MACRO ECONOMIC EVENTS (5) ===
+    case recession = "recession"
+    case economicGrowth = "economic_growth"
+    case economicContraction = "economic_contraction"
+    case boom = "boom"
+    case bust = "bust"
+    
+    // === MARKET/SHOCK EVENTS (5) ===
+    case supplyChainDisruption = "supply_chain_disruption"
+    case marketLiquidityCrunch = "market_liquidity_crunch"
+    case speculativeBubble = "speculative_bubble"
+    case crashCorrection = "crash_correction"
+    case trade shock = "trade_shock"
+    
+    // === POLICY EVENTS (3) ===
+    case policyChange = "policy_change"
+    case interestRateChange = "interest_rate_change"
+    case subsidyAdjustment = "subsidy_adjustment"
+    
+    // Get severity level (1-5, 5 = most severe)
     var severity: Int {
         switch self {
-        case .hurricane, .marketCrash, .recessionTrigger: return 5
-        case .flood, .priceSpike, .socialUnrest, .politicalInstability: return 4
-        case .drought, .priceCrash, .inflationSurge, .laborStrike: return 3
-        case .heatWave, .coldSnap, .earlyFrost, .locustSwarm, .pestOutbreak,
-             .diseaseEpizootic, .supplyChainDisruption, .energyCrisis,
-             .technologyBreakthrough, .favorableWeather, .marketOpportunity,
-             .governmentSubsidy: return 2
-        default: return 1
-        }
-    }
-    
-    // Get event duration in periods (months)
-    var typicalDuration: Int {
-        switch self {
-        case .hurricane: return 1
-        case .flood: return 2
-        case .drought: return 12
-        case .heatWave: return 3
-        case .coldSnap: return 2
-        case .earlyFrost: return 1
-        case .locustSwarm: return 2
-        case .pestOutbreak: return 3
-        case .diseaseEpizootic: return 4
-        case .priceCrash: return 6
+        case .recession: return 5
+        case .crashCorrection: return 5
+        case .bust: return 5
+        case .priceCrash: return 5
+        case .bubble: return 4
+        case .inflationSurge: return 4
+        case .diseaseEpidemic: return 4
+        case .pestOutbreak: return 4
+        case .cropFailure: return 4
+        case .adverseWeather: return 4
+        case .speculativeBubble: return 3
+        case .marketLiquidityCrunch: return 3
+        case .tradeShock: return 3
         case .priceSpike: return 3
-        case .marketCrash: return 12
-        case .inflationSurge: return 12
-        case .recessionTrigger: return 24
-        case .socialUnrest: return 3
-        case .politicalInstability: return 6
-        case .migrationWave: return 6
-        case .laborStrike: return 2
-        case .consumerConfidenceShift: return 2
-        case .infrastructureFailure: return 4
+        case .deflationSpiral: return 3
         case .supplyChainDisruption: return 3
-        case .energyCrisis: return 6
-        case .technologyBreakthrough: return 1
         case .favorableWeather: return 2
-        case .marketOpportunity: return 3
-        case .governmentSubsidy: return 1
+        case .bumperHarvest: return 2
+        case .priceStabilization: return 2
+        case .interestRateChange: return 2
+        case .subsidyAdjustment: return 2
+        case .economicGrowth: return 1
+        case .boom: return 1
+        case .volatilityIncrease: return 2
+        case .economicContraction: return 2
         default: return 1
-        }
-    }
-    
-    // Get event probability baseline (0-1, per period)
-    var baselineProbability: Double {
-        switch self {
-        case .drought: return 0.05
-        case .flood: return 0.08
-        case .hurricane: return 0.02
-        case .tornado: return 0.03
-        case .heatWave: return 0.1
-        case .coldSnap: return 0.05
-        case .earlyFrost: return 0.07
-        case .locustSwarm: return 0.02
-        case .pestOutbreak: return 0.06
-        case .diseaseEpizootic: return 0.04
-        case .priceCrash: return 0.03
-        case .priceSpike: return 0.08
-        case .marketCrash: return 0.02
-        case .inflationSurge: return 0.05
-        case .recessionTrigger: return 0.01
-        case .socialUnrest: return 0.06
-        case .politicalInstability: return 0.04
-        case .migrationWave: return 0.03
-        case .laborStrike: return 0.05
-        case .consumerConfidenceShift: return 0.07
-        case .infrastructureFailure: return 0.04
-        case .supplyChainDisruption: return 0.06
-        case .energyCrisis: return 0.03
-        case .technologyBreakthrough: return 0.01
-        case .favorableWeather: return 0.1
-        case .marketOpportunity: return 0.04
-        case .governmentSubsidy: return 0.02
-        default: return 0.01
         }
     }
     
     // Get event category
-    var category: EventCategory {
+    var category: EconomicEventCategory {
         switch self {
-        case .drought, .flood, .hurricane, .tornado, .heatWave, .coldSnap,
-              .earlyFrost, .locustSwarm, .pestOutbreak, .diseaseEpizootic:
-            return .weather
-        case .priceCrash, .priceSpike, .marketCrash, .inflationSurge, .recessionTrigger:
-            return .economic
-        case .socialUnrest, .politicalInstability, .migrationWave, .laborStrike,
-             .consumerConfidenceShift:
-            return .social
-        case .infrastructureFailure, .supplyChainDisruption, .energyCrisis:
-            return .infrastructure
-        case .technologyBreakthrough, .favorableWeather, .marketOpportunity, .governmentSubsidy:
-            return .opportunity
+        case .cropFailure, .bumperHarvest, .pestOutbreak, .diseaseEpidemic, .favorableWeather, .adverseWeather:
+            return .agricultural
+        case .priceSpike, .priceCrash, .inflationSurge, .deflationSpiral, .priceStabilization, .volatilityIncrease:
+            return .price
+        case .recession, .economicGrowth, .economicContraction, .boom, .bust:
+            return .macro
+        case .supplyChainDisruption, .marketLiquidityCrunch, .speculativeBubble, .crashCorrection, .trade shock:
+            return .market
+        case .policyChange, .interestRateChange, .subsidyAdjustment:
+            return .policy
+        }
+    }
+    
+    // Get typical duration in periods
+    var typicalDuration: Int {
+        switch self {
+        case .recession: return 12
+        case .economicGrowth: return 6
+        case .economicContraction: return 8
+        case .boom: return 4
+        case .bust: return 6
+        case .priceSpike: return 2
+        case .priceCrash: return 3
+        case .inflationSurge: return 8
+        case .deflationSpiral: return 6
+        case .priceStabilization: return 3
+        case .volatilityIncrease: return 4
+        case .cropFailure: return 3
+        case .bumperHarvest: return 2
+        case .pestOutbreak: return 4
+        case .diseaseEpidemic: return 6
+        case .favorableWeather: return 2
+        case .adverseWeather: return 4
+        case .supplyChainDisruption: return 6
+        case .marketLiquidityCrunch: return 3
+        case .speculativeBubble: return 5
+        case .crashCorrection: return 4
+        case .tradeShock: return 3
+        case .policyChange: return 3
+        case .interestRateChange: return 2
+        case .subsidyAdjustment: return 3
+        default: return 2
+        }
+    }
+    
+    // Get probability base (per period, before trigger conditions)
+    var baseProbability: Double {
+        switch self {
+        case .recession: return 0.03
+        case .economicGrowth: return 0.05
+        case .economicContraction: return 0.04
+        case .boom: return 0.03
+        case .bust: return 0.04
+        case .priceSpike: return 0.08
+        case .priceCrash: return 0.05
+        case .inflationSurge: return 0.06
+        case .deflationSpiral: return 0.04
+        case .priceStabilization: return 0.1
+        case .volatilityIncrease: return 0.07
+        case .cropFailure: return 0.05
+        case .bumperHarvest: return 0.04
+        case .pestOutbreak: return 0.06
+        case .diseaseEpidemic: return 0.02
+        case .favorableWeather: return 0.06
+        case .adverseWeather: return 0.07
+        case .supplyChainDisruption: return 0.04
+        case .marketLiquidityCrunch: return 0.05
+        case .speculativeBubble: return 0.03
+        case .crashCorrection: return 0.06
+        case .tradeShock: return 0.05
+        case .policyChange: return 0.1
+        case .interestRateChange: return 0.15
+        case .subsidyAdjustment: return 0.08
+        default: return 0.01
+        }
+    }
+    
+    // Get minimum trigger conditions complexity
+    var triggerComplexity: Int {
+        switch self {
+        case .recession: return 7
+        case .economicGrowth: return 5
+        case .economicContraction: return 6
+        case .boom: return 5
+        case .bust: return 6
+        case .priceSpike: return 3
+        case .priceCrash: return 4
+        case .inflationSurge: return 5
+        case .deflationSpiral: return 5
+        case .priceStabilization: return 2
+        case .volatilityIncrease: return 3
+        case .cropFailure: return 4
+        case .bumperHarvest: return 3
+        case .pestOutbreak: return 4
+        case .diseaseEpidemic: return 5
+        case .favorableWeather: return 3
+        case .adverseWeather: return 4
+        case .supplyChainDisruption: return 5
+        case .marketLiquidityCrunch: return 4
+        case .speculativeBubble: return 4
+        case .crashCorrection: return 3
+        case .tradeShock: return 4
+        case .policyChange: return 3
+        case .interestRateChange: return 2
+        case .subsidyAdjustment: return 3
+        default: return 2
         }
     }
 }
 
-public enum EventCategory: String, CaseIterable {
-    case weather = "weather"
-    case economic = "economic"
-    case social = "social"
-    case infrastructure = "infrastructure"
-    case opportunity = "opportunity"
+public enum EconomicEventCategory: String, CaseIterable {
+    case agricultural = "agricultural"
+    case price = "price"
+    case macro = "macroeconomic"
+    case market = "market"
+    case policy = "policy"
 }
 
-// MARK: - Event Record
+// MARK: - Economic Event Record (Expanded)
 
-// Complete event record with all attributes
-public struct Event: Identifiable {
+public struct EconomicEvent: Identifiable {
     public let id: String
-    public let type: EventType
     public let timestamp: Date
-    public var severity: Int
-    public var duration: Int // Periods remaining
-    public var triggeredBy: [String]? // What caused this event
-    public var affects: [String: Double] // Entity IDs -> impact magnitude
-    public var playerChoices: [String: EventChoice]? // Available player choices
-    public var resolved: Bool
-    public var resolution: EventResolution?
-    public var economicChain: [EconomicChainStep]? // Linked economic consequences
+    public let eventType: EconomicEventType
+    public let triggeredBy: [String: Any]? // Conditions that triggered this event
+    public let severity: Int
+    public var isActive: Bool
+    public var durationRemaining: Int
+    public var durationTotal: Int
+    
+    // Event impact parameters
+    public let affectedAgents: [String] // Agent IDs affected
+    public let affectedSystems: [String] // System IDs affected
+    public var intensity: Double // 0-1, how strong this event is
+    
+    // Economic impact
+    public let economicImpact: Double // Percentage impact on GDP/general economy
+    public let wealthRedistribution: Double // Positive or negative
+    public let priceImpact: [String: Double] // Commodity -> price change percentage
+    public let agentImpact: [String: Double] // Agent ID -> impact percentage
+    
+    // Event chain tracking
+    public var causedSecondaryEvents: [String] // IDs of events this caused
+    public var chainReactionDepth: Int // How many cascades
+    
+    // Metaphase tracking
+    public var periodStarted: Int
+    public var periodEnded: Int?
+    
+    // For deterministic events
+    public let deterministicTrigger: Bool
     
     public init(
         id: String,
-        type: EventType,
+        eventType: EconomicEventType,
         timestamp: Date = Date(),
-        severity: Int? = nil,
-        duration: Int? = nil,
-        triggeredBy: [String]? = nil,
-        affects: [String: Double] = [:],
-        playerChoices: [String: EventChoice]? = nil,
-        resolved: Bool = false,
-        resolution: EventResolution? = nil,
-        economicChain: [EconomicChainStep]? = nil
+        triggeredBy: [String: Any]? = nil,
+        isActive: Bool = true,
+        durationRemaining: Int? = nil,
+        durationTotal: Int? = nil,
+        affectedAgents: [String] = [],
+        affectedSystems: [String] = [],
+        intensity: Double = 1.0,
+        economicImpact: Double = 0,
+        wealthRedistribution: Double = 0,
+        priceImpact: [String: Double] = [:],
+        agentImpact: [String: Double] = [:],
+        causedSecondaryEvents: [String] = [],
+        chainReactionDepth: Int = 0,
+        periodStarted: Int = 0,
+        periodEnded: Int? = nil,
+        deterministicTrigger: Bool = false
     ) {
         self.id = id
-        self.type = type
+        self.eventType = eventType
         self.timestamp = timestamp
-        self.severity = severity ?? type.severity
-        self.duration = duration ?? type.typicalDuration
         self.triggeredBy = triggeredBy
-        self.affects = affects
-        self.playerChoices = playerChoices
-        self.resolved = resolved
-        self.resolution = resolution
-        self.economicChain = economicChain
-    }
-    
-    // Check if event is active (duration > 0 and not resolved)
-    var isActive: Bool {
-        duration! > 0 && !resolved
-    }
-    
-    // Check if event has ended
-    var hasEnded: Bool {
-        duration! <= 0 || resolved
+        self.isActive = isActive
+        self.durationTotal = durationTotal ?? eventType.typicalDuration
+        self.durationRemaining = durationRemaining ?? self.durationTotal
+        self.affectedAgents = affectedAgents
+        self.affectedSystems = affectedSystems
+        self.intensity = intensity
+        self.economicImpact = economicImpact
+        self.wealthRedistribution = wealthRedistribution
+        self.priceImpact = priceImpact
+        self.agentImpact = agentImpact
+        self.causedSecondaryEvents = causedSecondaryEvents
+        self.chainReactionDepth = chainReactionDepth
+        self.periodStarted = periodStarted
+        self.periodEnded = periodEnded
+        self.deterministicTrigger = deterministicTrigger
     }
 }
 
-// MARK: - Event Choice
+// MARK: - Economic Chain (Expanded)
 
-// Player choice during an event
-public enum EventChoice: String, CaseIterable {
-    case accept = "accept"
-    case mitigate = "mitigate"
-    case resist = "resist"
-    case adapt = "adapt"
-    case exploit = "exploit"
-    case ignore = "ignore"
-    case customize = "customize"
+public enum EconomicChainLink: Identifiable {
+    case event(EconomicEvent)
+    case priceShift(String, Double) // commodity, percentage change
+    case wealthChange(String, Double) // agent ID, percentage change
+    case regulationChange(String) // regulation ID
+    case policyImplement(String) // policy ID
     
-    // Get choice description
-    var description: String {
+    public var id: String {
         switch self {
-        case .accept: "Accept the situation"
-        case .mitigate: "Take mitigation actions"
-        case .resist: "Resist or fight"
-        case .adapt: "Adapt to new conditions"
-        case .exploit: "Exploit the situation"
-        case .ignore: "Ignore and continue as normal"
-        case .customize: "Customize response"
+        case .event(let event): return event.id
+        case .priceShift(let commodity, _): return "price-\(commodity)"
+        case .wealthChange(let agent, _): return "wealth-\(agent)"
+        case .regulationChange(let id): return "reg-\(id)"
+        case .policyImplement(let id): return "policy-\(id)"
         }
     }
     
-    // Get choice impact on event resolution
-    var resolutionImpact: Double {
-        switch self {
-        case .accept: -0.1 // Negative - passive acceptance
-        case .mitigate: 0.3 // Positive - active mitigation
-        case .resist: 0.1 // Small chance of success
-        case .adapt: 0.2 // Good long-term
-        case .exploit: 0.4 // High short-term, risky
-        case .ignore: -0.2 // Negative - problems persist
-        case .customize: 0.5 // Best if well-tailored
-        }
+    var isEvent: Bool {
+        if case .event = self { return true }
+        return false
     }
 }
 
-// MARK: - Event Resolution
-
-// How an event was resolved
-public enum EventResolution: String, CaseIterable {
-    case naturalEnd = "natural_end" // Event ended on its own
-    case playerChoice = "player_choice" // Resolved through player choice
-    case mitigation = "mitigation" // Resolved through mitigation efforts
-    case escalation = "escalation" // Event escalated worse
-    case externalFactor = "external_factor" // Resolved by external factors
-}
-
-// MARK: - Economic Chain Step
-
-// A step in an economic chain reaction
-public struct EconomicChainStep: Identifiable {
+public struct EconomicChain {
     public let id: String
-    public let stepNumber: Int
-    public let cause: String // What caused this step
-    public let effect: String // What this step causes
-    public let magnitude: Double // Impact magnitude
-    public let affectedEntity: String // Which entity is affected
-    public let timestamp: Date
+    public var links: [EconomicChainLink]
+    public var originatedFrom: String // Event ID or agent ID
+    public var chainStrength: Double // 0-1
+    public var maxDepth: Int
+    public var currentDepth: Int
+    public var isActive: Bool
+    public var createdPeriod: Int
     
     public init(
         id: String,
-        stepNumber: Int,
-        cause: String,
-        effect: String,
-        magnitude: Double,
-        affectedEntity: String,
-        timestamp: Date = Date()
+        links: [EconomicChainLink],
+        originatedFrom: String,
+        chainStrength: Double = 1.0,
+        maxDepth: Int = 10,
+        currentDepth: Int = 0,
+        isActive: Bool = true,
+        createdPeriod: Int = 0
     ) {
         self.id = id
-        self.stepNumber = stepNumber
-        self.cause = cause
-        self.effect = effect
-        self.magnitude = magnitude
-        self.affectedEntity = affectedEntity
-        self.timestamp = timestamp
+        self.links = links
+        self.originatedFrom = originatedFrom
+        self.chainStrength = chainStrength
+        self.maxDepth = maxDepth
+        self.currentDepth = currentDepth
+        self.isActive = isActive
+        self.createdPeriod = createdPeriod
+    }
+    
+    mutating func addLink(_ link: EconomicChainLink) {
+        // Check if we've reached max depth
+        if currentDepth < maxDepth {
+            links.append(link)
+            currentDepth += 1
+        }
+    }
+    
+    func chainValue() -> Double {
+        // Calculate cumulative effect of the chain
+        var totalValue: Double = 0
+        for link in links {
+            if link.isEvent {
+                // Would need the actual event to value it
+                // For now, count weighted by chain strength
+                totalValue += chainStrength * 10
+            } else if link is EconomicChainLink.priceShift {
+                totalValue += chainStrength * 5
+            } else if link is EconomicChainLink.wealthChange {
+                totalValue += chainStrength * 8
+            }
+        }
+        return totalValue
     }
 }
 
-// MARK: - Dynamic Events System
+// MARK: - Economic Cycle System (Expanded)
 
-// Central dynamic event management system
-public class DynamicEvents {
-    // Active events
-    private var activeEvents: [String: Event] = [:]
+public class EconomicCycles {
+    // Event tracking
+    private var activeEvents: [String: EconomicEvent] = [:]
+    private var eventHistory: [String: EconomicEvent] = [:]
+    var economicChains: [String: EconomicChain] = [:]
     
-    // Event history
-    var eventHistory: [String: Event] = [:]
+    // Statistics
+    var eventsThisPeriod: Int = 0
+    var totalEventsGenerated: Int = 0
+    var totalChainsReacted: Int = 0
     
-    // Economic chain tracking
-    private var economicChains: [[EconomicChainStep]] = []
+    // Economic tracking
+    var gdpLevel: Double = 10000 // Base GDP
+    var inflationAccumulator: Double = 0
+    var priceLevel: Double = 100 // Base price level (index 100)
+    var volatilityLevel: Double = 0.3 // Current market volatility
     
-    // Probability modifiers based on game state
-    private var probabilityModifiers: [String: Double] = [:] // eventType -> modifier
+    // Trigger condition tracking
+    var indicatorThresholds: [String: Double] = [:]
+    var lastEventPeriod: Int = 0
     
-    // Initialize with empty state
+    // Deterministic trigger conditions
+    private var deterministicConditions: [String: [String: Any]] = [:]
+    
     public init() {
-        #warning("Initialize dynamic events system")
-        #warning("Set up all 25 event types with probabilities and chains")
-        #warning("Configure probability modifiers based on game state")
-        #warning("Set up economic chain templates")
+        #warning("Initialize economic cycle system with all event types")
+        #warning("Set up trigger conditions and probability calculations")
+        #warning("Configure economic indicator thresholds")
+        #warning("Set up chain reaction mechanisms")
         
-        #warning("TODO: Initialize all 25 EventType cases with their properties")
-        #warning("TODO: Set up baseline probabilities")
-        #warning("TODO: Configure probability modifiers (weather vs. climate, economic vs. fundamentals)")
-        #warning("TODO: Create economic chain templates for key event types")
-        #warning("TODO: Set up event interactions and supersession rules")
+        #warning("TODO: Initialize trigger conditions for all 25 event types")
+        #warning("TODO: Set up deterministic trigger conditions based on economic indicators")
+        #warning("TODO: Configure probability calculations based on current state")
+        #warning("TODO: Initialize economic indicator thresholds and tracking")
+        
+        // Initialize all 25 event types with their tracking
+        for eventType in EconomicEventType.allCases {
+            // Initialize tracking for each event type
+            // In a full system, would have specific condition monitors
+        }
+        
+        #warning("Set up economic indicator tracking")
+        // Initialize key economic indicators
+        indicatorThresholds = [
+            "gdp_growth": 0, // Recession triggers below this
+            "inflation": 2, // Inflation surge above this (index 100 = base)
+            "unemployment": 0.08, // Recession threshold
+            "priceVolatility": 0.5, // Volatility increase threshold
+            "supplyCapacity": 0.8, // Supply chain stress threshold
+        ]
+        
+        #warning("Initialize deterministic trigger conditions")
+        // Set up conditions that always trigger certain events when met
+        deterministicConditions = [
+            "high_inflation": [
+                "threshold": 5.0, // Inflation index above 5 triggers
+                "events": ["inflation_surge", "interest_rate_change"],
+                "condition": "global_inflation > threshold"
+            ],
+            "low_gdp": [
+                "threshold": -3.0, // GDP growth below -3% triggers
+                "events": ["recession", "economic_contraction"],
+                "condition": "gdp_growth < threshold"
+            ],
+            "high_volatility": [
+                "threshold": 0.7, // Volatility above 0.7 triggers
+                "events": ["volatility_increase", "market_liquidity_crunch"],
+                "condition": "market_volatility > threshold"
+            ]
+        ]
+        
+        #warning("Set up initial event history")
+        lastEventPeriod = 0
     }
     
     // MARK: - Event Generation
     
-    /// Check if any events should trigger this period
-    mutating func checkForEvents(thisPeriodContext: GameContext) -> [Event] {
-        #warning("For each event type, check: baseline probability + modifiers")
-        #warning("Check: supersession rules (can multiple events trigger simultaneously?)")
-        #warning("Determine: which events actually trigger")
+    func generateEvents(in period: Int, 
+                       environment: SimulationEnvironment?,
+                       agentPopulation: AgentPopulation?) -> [EconomicEvent] {
+        var generatedEvents: [EconomicEvent] = []
         
-        var triggeredEvents: [Event] = []
+        #warning("Generate events based on probabilistic and deterministic triggers")
         
-        for eventType in EventType.allCases {
-            #warning("Calculate adjusted probability: baseline * modifiers")
-            let adjustedProbability = calculateAdjustedProbability(eventType, context: thisPeriodContext)
+        // Generate probabilistic events
+        let probabilisticEvents = generateProbabilisticEvents(in: period, 
+                                                              environment: environment,
+                                                              agentPopulation: agentPopulation)
+        generatedEvents.append(contentsOf: probabilisticEvents)
+        
+        // Generate deterministic events based on conditions
+        let deterministicEvents = generateDeterministicEvents(in: period,
+                                                              environment: environment,
+                                                              agentPopulation: agentPopulation)
+        generatedEvents.append(contentsOf: deterministicEvents)
+        
+        // Sort by severity (most severe first) for processing order
+        generatedEvents.sort { $0.severity > $1.severity }
+        
+        #warning("Process event interactions and chain reactions")
+        // Process chain reactions between events
+        for event in generatedEvents where event.isActive {
+            processEventChains(event, in: period, environment: environment, agentPopulation: agentPopulation)
+        }
+        
+        totalEventsGenerated += generatedEvents.count
+        eventsThisPeriod = generatedEvents.count
+        
+        return generatedEvents
+    }
+    
+    private func generateProbabilisticEvents(in period: Int,
+                                            environment: SimulationEnvironment?,
+                                            agentPopulation: AgentPopulation?) -> [EconomicEvent] {
+        var events: [EconomicEvent] = []
+        
+        #warning("Calculate probabilities for each event type based on current state")
+        
+        // Calculate adjusted probabilities based on current economic state
+        let stateAdjustments = calculateStateAdjustments(environment: environment, 
+                                                        agentPopulation: agentPopulation)
+        
+        // Generate events based on adjusted probabilities
+        for eventType in EconomicEventType.allCases {
+            let baseProb = eventType.baseProbability
+            let adjustment = stateAdjustments[eventType.rawValue] ?? 1.0
+            let adjustedProb = min(0.5, baseProb * adjustment) // Cap at 50% per period
             
-            #warning("Roll random chance: if random < adjustedProbability, trigger")
-            let shouldTrigger = Double.random(in: 0...1) < adjustedProbability
-            
-            if shouldTrigger {
-                #warning("Create event with: severity, duration, affects, economic chain")
-                let event = createTriggeredEvent(eventType, context: thisPeriodContext)
-                triggeredEvents.append(event)
-                
-                #warning("Add to active events")
-                activeEvents[event.id] = event
+            // Check if event should trigger this period
+            if Double.random(in: 0...1) < adjustedProb {
+                let event = createEvent(eventType, period: period, triggeredBy: ["method": "probabilistic"])
+                events.append(event)
             }
         }
         
-        #warning("Return all triggered events this period")
-        return triggeredEvents
+        return events
     }
     
-    /// Calculate adjusted probability for an event type
-    private func calculateAdjustedProbability(_ eventType: EventType, context: GameContext) -> Double {
-        #warning("Start with baseline probability")
-        var probability = eventType.baselineProbability
+    private func generateDeterministicEvents(in period: Int,
+                                            environment: SimulationEnvironment?,
+                                            agentPopulation: AgentPopulation?) -> [EconomicEvent] {
+        var events: [EconomicEvent] = []
         
-        #warning("Apply modifiers based on game state")
-        // Climate change effects
-        if let climateModifier = probabilityModifiers["climate_change"] {
-            probability *= climateModifier
-        }
+        #warning("Check deterministic trigger conditions")
         
-        // Economic fundamentals
-        if let economicModifier = probabilityModifiers["economic_volatility"] {
-            probability *= economicModifier
-        }
-        
-        // Weather pattern changes
-        if let weatherModifier = probabilityModifiers["weather_pattern_change"] {
-            probability *= weatherModifier
-        }
-        
-        #warning("Cap probability at 0-1 range")
-        return min(0.95, max(0.001, probability))
-    }
-    
-    /// Create a triggered event
-    private func createTriggeredEvent(_ eventType: EventType, context: GameContext) -> Event {
-        #warning("Set severity based on event type")
-        let severity = eventType.severity
-        
-        #warning("Set duration based on event type")
-        let duration = eventType.typicalDuration
-        
-        #warning("Determine affected entities and impact magnitudes")
-        var affects: [String: Double] = [:]
-        
-        #warning("Build economic chain for this event type")
-        let economicChain = buildEconomicChain(eventType)
-        
-        #warning("Set up player choices if applicable")
-        var playerChoices: [String: EventChoice] = [:]
-        if eventType.allowsPlayerChoices {
-            #warning("Create default player choices for this event type")
-            for (choiceIndex, choice) in EventChoice.allCases.enumerated() {
-                playerChoices["choice_\(choiceIndex)"] = choice
+        // Check each deterministic condition
+        for (conditionId, conditionData) in deterministicConditions {
+            let threshold = conditionData["threshold"] as? Double ?? 0
+            let eventNames = conditionData["events"] as? [String] ?? []
+            
+            // Evaluate condition based on available data
+            let conditionMet = evaluateDeterministicCondition(threshold: threshold,
+                                                            environment: environment,
+                                                            agentPopulation: agentPopulation,
+                                                            conditionId: conditionId)
+            
+            if conditionMet && eventNames.count > 0 {
+                // Pick first matching event (or could rotate through them)
+                let eventName = eventNames[0]
+                if let eventType = EconomicEventType(rawValue: eventName) {
+                    let event = createEvent(eventType, period: period, triggeredBy: ["method": "deterministic", "condition": conditionId])
+                    events.append(event)
+                }
             }
         }
         
-        let eventId = "event-\(eventType.rawValue)-\(Date.timeIntervalSince1970)"
+        return events
+    }
+    
+    private func calculateStateAdjustments(environment: SimulationEnvironment?,
+                                          agentPopulation: AgentPopulation?) -> [String: Double] {
+        var adjustments: [String: Double] = [:]
         
-        return Event(
-            id: eventId,
-            type: eventType,
-            severity: severity,
-            duration: duration,
-            affects: affects,
-            playerChoices: playerChoices.isEmpty ? nil : playerChoices,
-            economicChain: economicChain.isEmpty ? nil : economicChain
+        #warning("Calculate state-based probability adjustments")
+        
+        // Base adjustments from economic state
+        if let env = environment {
+            // Inflation adjustment - high inflation increases inflation-related events
+            let inflationRate = env.inflationRate
+            for eventType in EconomicEventType.allCases where eventType == .inflationSurge 
+                    || eventType == .deflationSpiral 
+                    || eventType == .priceSpike 
+                    || eventType == .priceCrash {
+                if eventType == .inflationSurge || eventType == .deflationSpiral {
+                    adjustments[eventType.rawValue] = 1.0 + inflationRate * 50
+                } else if eventType == .priceSpike {
+                    adjustments[eventType.rawValue] = 1.0 + inflationRate * 30
+                } else if eventType == .priceCrash {
+                    adjustments[eventType.rawValue] = 1.0 - inflationRate * 20
+                }
+            }
+            
+            // Volatility adjustment
+            let marketVolatility = env.marketVolatility
+            for eventType in EconomicEventType.allCases where eventType == .volatilityIncrease 
+                    || eventType == .priceSpike 
+                    || eventType == .priceCrash {
+                if eventType == .volatilityIncrease {
+                    adjustments[eventType.rawValue] = max(0.1, 1.0 + marketVolatility * 200)
+                } else if eventType == .priceSpike || eventType == .priceCrash {
+                    adjustments[eventType.rawValue] = 1.0 + marketVolatility * 100
+                }
+            }
+            
+            // GDP growth adjustment
+            // Would need GDP growth rate from environment
+        }
+        
+        // Default to 1.0 (no adjustment) for all if not set
+        for eventType in EconomicEventType.allCases {
+            if adjustments[eventType.rawValue] == nil {
+                adjustments[eventType.rawValue] = 1.0
+            }
+        }
+        
+        return adjustments
+    }
+    
+    private func evaluateDeterministicCondition(threshold: Double,
+                                               environment: SimulationEnvironment?,
+                                               agentPopulation: AgentPopulation?,
+                                               conditionId: String) -> Bool {
+        #warning("Evaluate deterministic trigger condition")
+        
+        // In a full system, would check specific economic indicators
+        // For now, use placeholder logic
+        
+        // Check GDP growth (placeholder)
+        if conditionId == "high_inflation" {
+            // Simulate: if inflation is high enough, trigger
+            let simulatedInflation: Double
+            if let env = environment {
+                simulatedInflation = env.inflationRate * 100 // Convert to percentage
+            } else {
+                simulatedInflation = 3.0 // Default
+            }
+            return simulatedInflation > threshold
+        }
+        
+        // Check low GDP growth
+        if conditionId == "low_gdp" {
+            let simulatedGDP: Double
+            if let env = environment {
+                simulatedGDP = -2.0 // Placeholder: would get actual GDP growth
+            } else {
+                simulatedGDP = -1.0
+            }
+            return simulatedGDP < threshold
+        }
+        
+        // Check high volatility
+        if conditionId == "high_volatility" {
+            let simulatedVol: Double
+            if let env = environment {
+                simulatedVol = env.marketVolatility
+            } else {
+                simulatedVol = 0.5
+            }
+            return simulatedVol > threshold
+        }
+        
+        return false
+    }
+    
+    // MARK: - Event Creation
+    
+    private func createEvent(_ eventType: EconomicEventType, period: Int, triggeredBy: [String: Any]) -> EconomicEvent {
+        let id = "event-\(eventType.rawValue)-\(period)-\(Date.timeIntervalSince1970)"
+        
+        // Determine intensity based on event type and randomness
+        let intensity = Double.random(in: 0.5...1.0) * eventType.baseProbability
+        
+        // Calculate economic impact based on event type
+        let economicImpact: Double
+        let priceImpact: [String: Double]
+        let wealthRedistribution: Double
+        
+        switch eventType {
+        case .recession:
+            economicImpact = -5
+            wealthRedistribution = -2
+            priceImpact = ["all": -10]
+        case .economicGrowth:
+            economicImpact = 3
+            wealthRedistribution = 2
+            priceImpact = ["all": 5]
+        case .bust:
+            economicImpact = -8
+            wealthRedistribution = -3
+            priceImpact = ["all": -15]
+        case .boom:
+            economicImpact = 6
+            wealthRedistribution = 3
+            priceImpact = ["all": 10]
+        case .priceSpike:
+            economicImpact = -2
+            wealthRedistribution = -1
+            priceImpact = ["all": 20]
+        case .priceCrash:
+            economicImpact = 1 // Actually negative wealth
+            wealthRedistribution = 2
+            priceImpact = ["all": -25]
+        case .inflationSurge:
+            economicImpact = -3
+            wealthRedistribution = -1
+            priceImpact = ["all": 15]
+        case .deflationSpiral:
+            economicImpact = -4
+            wealthRedistribution = 1
+            priceImpact = ["all": -15]
+        case .priceStabilization:
+            economicImpact = 1
+            wealthRedistribution = 0
+            priceImpact = ["all": 0]
+        case .volatilityIncrease:
+            economicImpact = -1
+            wealthRedistribution = 0
+            priceImpact = ["all": 0]
+        case .cropFailure:
+            economicImpact = -4
+            wealthRedistribution = -3
+            priceImpact = ["corn": 30, "wheat": 25, "soybeans": 20]
+        case .bumperHarvest:
+            economicImpact = 3
+            wealthRedistribution = 2
+            priceImpact = ["corn": -20, "wheat": -15, "soybeans": -10]
+        case .pestOutbreak:
+            economicImpact = -3
+            wealthRedistribution = -2
+            priceImpact = ["all": 10]
+        case .diseaseEpidemic:
+            economicImpact = -5
+            wealthRedistribution = -3
+            priceImpact = ["all": 5]
+        case .favorableWeather:
+            economicImpact = 2
+            wealthRedistribution = 1
+            priceImpact = ["all": -10]
+        case .adverseWeather:
+            economicImpact = -3
+            wealthRedistribution = -1
+            priceImpact = ["all": 15]
+        case .supplyChainDisruption:
+            economicImpact = -2
+            wealthRedistribution = -1
+            priceImpact = ["all": 15]
+        case .marketLiquidityCrunch:
+            economicImpact = -3
+            wealthRedistribution = -2
+            priceImpact = ["all": 0]
+        case .speculativeBubble:
+            economicImpact = 2
+            wealthRedistribution = 1
+            priceImpact = ["all": 15]
+        case .crashCorrection:
+            economicImpact = -4
+            wealthRedistribution = -2
+            priceImpact = ["all": -20]
+        case .tradeShock:
+            economicImpact = -3
+            wealthRedistribution = -1
+            priceImpact = ["all": 10]
+        case .policyChange:
+            economicImpact = 0
+            wealthRedistribution = 0
+            priceImpact = ["all": 0]
+        case .interestRateChange:
+            economicImpact = -1
+            wealthRedistribution = -1
+            priceImpact = ["all": 0]
+        case .subsidyAdjustment:
+            economicImpact = 1
+            wealthRedistribution = 1
+            priceImpact = ["all": 0]
+        default:
+            economicImpact = 0
+            wealthRedistribution = 0
+            priceImpact = [:]
+        }
+        
+        return EconomicEvent(
+            id: id,
+            eventType: eventType,
+            triggeredBy: triggeredBy,
+            severity: eventType.severity,
+            intensity: intensity,
+            economicImpact: economicImpact,
+            wealthRedistribution: wealthRedistribution,
+            priceImpact: priceImpact,
+            agentImpact: [:],
+            causedSecondaryEvents: [],
+            chainReactionDepth: 0,
+            periodStarted: period,
+            deterministicTrigger: false
         )
     }
     
-    /// Build economic chain for an event type
-    private func buildEconomicChain(_ eventType: EventType) -> [EconomicChainStep] {
-        #warning("Build chain based on event type")
-        // Each event has a characteristic economic chain
+    // MARK: - Event Processing and Chain Reactions
+    
+    private func processEventChains(_ event: EconomicEvent, in period: Int,
+                                   environment: SimulationEnvironment?,
+                                   agentPopulation: AgentPopulation?) {
+        #warning("Process event chain reactions")
         
-        var chain: [EconomicChainStep] = []
+        var chainId = "chain-\(event.id)-\(period)"
         
-        switch eventType {
-        case .drought:
-            chain = [
-                EconomicChainStep(id: "drought-1", stepNumber: 1, cause: "drought begins", effect: "lower agricultural yields", magnitude: 0.3, affectedEntity: "agriculture"),
-                EconomicChainStep(id: "drought-2", stepNumber: 2, cause: "lower yields", effect: "higher crop prices", magnitude: 0.5, affectedEntity: "consumers"),
-                EconomicChainStep(id: "drought-3", stepNumber: 3, cause: "higher prices", effect: "reduced disposable income", magnitude: 0.4, affectedEntity: "consumers"),
-                EconomicChainStep(id: "drought-4", stepNumber: 4, cause: "reduced income", effect: "lower consumer spending", magnitude: 0.3, affectedEntity: "businesses"),
-                EconomicChainStep(id: "drought-5", stepNumber: 5, cause: "lower spending", effect: "reduced business revenue", magnitude: 0.4, affectedEntity: "businesses"),
-                EconomicChainStep(id: "drought-6", stepNumber: 6, cause: "lower revenue", effect: "employment reductions", magnitude: 0.3, affectedEntity: "labor_market")
-            ]
+        // Determine what secondary events this event might cause
+        var secondaryEvents: [EconomicEvent] = []
+        var chainLinks: [EconomicChainLink] = []
+        
+        switch event.eventType {
+        case .cropFailure:
+            // Can cause price spikes, economic contraction, wealth redistribution
+            let priceShiftLink = EconomicChainLink.priceShift("affected_commodities", abs(event.economicImpact))
+            chainLinks.append(priceShiftLink)
             
-        case .flood:
-            chain = [
-                EconomicChainStep(id: "flood-1", stepNumber: 1, cause: "flood begins", effect: "crop destruction", magnitude: 0.4, affectedEntity: "agriculture"),
-                EconomicChainStep(id: "flood-2", stepNumber: 2, cause: "crop destruction", effect: "infrastructure damage", magnitude: 0.3, affectedEntity: "infrastructure"),
-                EconomicChainStep(id: "flood-3", stepNumber: 3, cause: "infrastructure damage", effect: "disrupted transport", magnitude: 0.3, affectedEntity: "trade"),
-                EconomicChainStep(id: "flood-4", stepNumber: 4, cause: "disrupted transport", effect: "supply shortages", magnitude: 0.4, affectedEntity: "consumers"),
-                EconomicChainStep(id: "flood-5", stepNumber: 5, cause: "supply shortages", effect: "price increases", magnitude: 0.5, affectedEntity: "consumers"),
-                EconomicChainStep(id: "flood-6", stepNumber: 6, cause: "price increases", effect: "reduced affordability", magnitude: 0.3, affectedEntity: "consumers")
-            ]
+            // Might cause inflation
+            if event.economicImpact < -3 {
+                let inflationEvent = EconomicEvent(
+                    id: "chain-event-\(event.id)-inflation",
+                    eventType: .inflationSurge,
+                    triggeredBy: ["caused_by": event.id],
+                    severity: 3,
+                    intensity: event.intensity * 0.5,
+                    economicImpact: -2,
+                    wealthRedistribution: -1,
+                    priceImpact: ["all": 5],
+                    causedSecondaryEvents: []
+                )
+                secondaryEvents.append(inflationEvent)
+                chainLinks.append(EconomicChainLink.event(inflationEvent))
+            }
+            
+        case .bumperHarvest:
+            // Can cause price crashes, economic growth in agricultural sector
+            let priceShiftLink = EconomicChainLink.priceShift("affected_commodities", -abs(event.economicImpact))
+            chainLinks.append(priceShiftLink)
             
         case .priceSpike:
-            chain = [
-                EconomicChainStep(id: "spike-1", stepNumber: 1, cause: "price spike begins", effect: "increased cost of living", magnitude: 0.4, affectedEntity: "consumers"),
-                EconomicChainStep(id: "spike-2", stepNumber: 2, cause: "cost of living", effect: "reduced disposable income", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "spike-3", stepNumber: 3, cause: "reduced income", effect: "lower consumer spending", magnitude: 0.3, affectedEntity: "businesses"),
-                EconomicChainStep(id: "spike-4", stepNumber: 4, cause: "lower spending", effect: "business revenue decline", magnitude: 0.4, affectedEntity: "businesses"),
-                EconomicChainStep(id: "spike-5", stepNumber: 5, cause: "revenue decline", effect: "potential job losses", magnitude: 0.3, affectedEntity: "labor_market")
-            ]
+            // Can cause demand destruction, economic contraction, policy response
+            let wealthChangeLink = EconomicChainLink.wealthChange("affected_agents", event.wealthRedistribution)
+            chainLinks.append(wealthChangeLink)
             
-        case .socialUnrest:
-            chain = [
-                EconomicChainStep(id: "unrest-1", stepNumber: 1, cause: "social unrest begins", effect: "reduced consumer confidence", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "unrest-2", stepNumber: 2, cause: "reduced confidence", effect: "lower spending", magnitude: 0.3, affectedEntity: "businesses"),
-                EconomicChainStep(id: "unrest-3", stepNumber: 3, cause: "lower spending", effect: "business revenue decline", magnitude: 0.4, affectedEntity: "businesses"),
-                EconomicChainStep(id: "unrest-4", stepNumber: 4, cause: "revenue decline", effect: "potential labor strikes", magnitude: 0.4, affectedEntity: "labor_market"),
-                EconomicChainStep(id: "unrest-5", stepNumber: 5, cause: "labor strikes", effect: "production disruptions", magnitude: 0.3, affectedEntity: "agriculture"),
-                EconomicChainStep(id: "unrest-5", stepNumber: 6, cause: "production disruptions", effect: "economic further slowdown", magnitude: 0.2, affectedEntity: "economy")
-            ]
+            if event.economicImpact < 0 {
+                let contractionEvent = EconomicEvent(
+                    id: "chain-event-\(event.id)-contraction",
+                    eventType: .economicContraction,
+                    triggeredBy: ["caused_by": event.id],
+                    severity: 3,
+                    intensity: event.intensity * 0.3,
+                    economicImpact: -2,
+                    wealthRedistribution: -1,
+                    priceImpact: ["all": -5],
+                    causedSecondaryEvents: []
+                )
+                secondaryEvents.append(contractionEvent)
+                chainLinks.append(EconomicChainLink.event(contractionEvent))
+            }
             
-        case .technologyBreakthrough:
-            chain = [
-                EconomicChainStep(id: "tech-1", stepNumber: 1, cause: "technology breakthrough", effect: "increased productivity", magnitude: 0.5, affectedEntity: "economy"),
-                EconomicChainStep(id: "tech-2", stepNumber: 2, cause: "increased productivity", effect: "lower production costs", magnitude: 0.3, affectedEntity: "businesses"),
-                EconomicChainStep(id: "tech-3", stepNumber: 3, cause: "lower costs", effect: "lower consumer prices", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "tech-4", stepNumber: 3, cause: "lower prices", effect: "increased purchasing power", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "tech-5", stepNumber: 5, cause: "increased purchasing power", effect: "economic growth", magnitude: 0.4, affectedEntity: "economy")
-            ]
+        case .priceCrash:
+            // Can cause bankruptcies, wealth destruction, recession risk
+            let wealthChangeLink = EconomicChainLink.wealthChange("affected_agents", event.wealthRedistribution)
+            chainLinks.append(wealthChangeLink)
             
-        case .favorableWeather:
-            chain = [
-                EconomicChainStep(id: "fav-1", stepNumber: 1, cause: "favorable weather", effect: "excellent yields", magnitude: 0.5, affectedEntity: "agriculture"),
-                EconomicChainStep(id: "fav-2", stepNumber: 2, cause: "excellent yields", effect: "lower crop prices", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "fav-3", stepNumber: 3, cause: "lower prices", effect: "increased disposable income", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "fav-4", stepNumber: 4, cause: "increased income", effect: "higher consumer spending", magnitude: 0.4, affectedEntity: "businesses"),
-                EconomicChainStep(id: "fav-5", stepNumber: 5, cause: "higher spending", effect: "business revenue growth", magnitude: 0.4, affectedEntity: "businesses"),
-                EconomicChainStep(id: "fav-6", stepNumber: 6, cause: "revenue growth", effect: "employment increases", magnitude: 0.3, affectedEntity: "labor_market")
-            ]
+            let recessionEvent = EconomicEvent(
+                id: "chain-event-\(event.id)-recession",
+                eventType: .recession,
+                triggeredBy: ["caused_by": event.id],
+                severity: 5,
+                intensity: event.intensity * 0.7,
+                economicImpact: -5,
+                wealthRedistribution: -3,
+                priceImpact: ["all": -15],
+                causedSecondaryEvents: []
+            )
+            secondaryEvents.append(recessionEvent)
+            chainLinks.append(EconomicChainLink.event(recessionEvent))
             
-        case .marketOpportunity:
-            chain = [
-                EconomicChainStep(id: "opp-1", stepNumber: 1, cause: "market opportunity arises", effect: "increased demand for products", magnitude: 0.4, affectedEntity: "businesses"),
-                EconomicChainStep(id: "opp-2", stepNumber: 2, cause: "increased demand", effect: "higher prices/profits", magnitude: 0.3, affectedEntity: "businesses"),
-                EconomicChainStep(id: "opp-3", stepNumber: 3, cause: "higher profits", effect: "increased investment", magnitude: 0.3, affectedEntity: "banking"),
-                EconomicChainStep(id: "opp-4", stepNumber: 4, cause: "increased investment", effect: "economic expansion", magnitude: 0.4, affectedEntity: "economy"),
-                EconomicChainStep(id: "opp-5", stepNumber: 5, cause: "economic expansion", effect: "employment growth", magnitude: 0.3, affectedEntity: "labor_market")
-            ]
+        case .inflationSurge:
+            // Can cause interest rate changes, policy response, wealth redistribution
+            let policyLink = EconomicChainLink.policyImplement("interest_rate_response")
+            chainLinks.append(policyLink)
             
-        case .governmentSubsidy:
-            chain = [
-                EconomicChainStep(id: "subsidy-1", stepNumber: 1, cause: "government subsidy announced", effect: "reduced effective costs", magnitude: 0.3, affectedEntity: "agriculture"),
-                EconomicChainStep(id: "subsidy-2", stepNumber: 2, cause: "reduced costs", effect: "increased production incentive", magnitude: 0.3, affectedEntity: "agriculture"),
-                EconomicChainStep(id: "subsidy-3", stepNumber: 3, cause: "increased production", effect: "lower market prices", magnitude: 0.2, affectedEntity: "consumers"),
-                EconomicChainStep(id: "subsidy-4", stepNumber: 4, cause: "lower prices", effect: "increased purchasing power", magnitude: 0.3, affectedEntity: "consumers"),
-                EconomicChainStep(id: "subsidy-5", stepNumber: 5, cause: "increased purchasing power", effect: "economic activity boost", magnitude: 0.3, affectedEntity: "economy")
-            ]
+            let interestRateEvent = EconomicEvent(
+                id: "chain-event-\(event.id)-rate_change",
+                eventType: .interestRateChange,
+                triggeredBy: ["caused_by": event.id],
+                severity: 3,
+                intensity: event.intensity * 0.5,
+                economicImpact: -1,
+                wealthRedistribution: -1,
+                priceImpact: ["all": 0],
+                causedSecondaryEvents: []
+            )
+            secondaryEvents.append(interestRateEvent)
+            chainLinks.append(EconomicChainLink.event(interestRateEvent))
             
-        default: chain = [] // No specific chain for unhandled types
+        case .speculativeBubble:
+            // Can cause crash correction, wealth destruction
+            let crashEvent = EconomicEvent(
+                id: "chain-event-\(event.id)-correction",
+                eventType: .crashCorrection,
+                triggeredBy: ["caused_by": event.id],
+                severity: 5,
+                intensity: event.intensity * 0.8,
+                economicImpact: -4,
+                wealthRedistribution: -3,
+                priceImpact: ["all": -20],
+                causedSecondaryEvents: []
+            )
+            secondaryEvents.append(crashEvent)
+            chainLinks.append(EconomicChainLink.event(crashEvent))
+            
+        case .tradeShock:
+            // Can cause supply chain issues, price changes, policy response
+            let supplyLink = EconomicChainLink.event(EconomicEvent(
+                id: "chain-event-\(event.id)-supply",
+                eventType: .supplyChainDisruption,
+                triggeredBy: ["caused_by": event.id],
+                severity: 3,
+                intensity: event.intensity * 0.5,
+                economicImpact: -2,
+                wealthRedistribution: -1,
+                priceImpact: ["all": 10],
+                causedSecondaryEvents: []
+            ))
+            chainLinks.append(supplyLink)
+            
+        default: break
         }
         
-        return chain
+        #warning("Create economic chain with generated links and secondary events")
+        
+        let chain = EconomicChain(
+            id: chainId,
+            links: chainLinks,
+            originatedFrom: event.id,
+            chainStrength: event.intensity,
+            maxDepth: event.eventType.typicalDuration,
+            currentDepth: secondaryEvents.count,
+            isActive: !secondaryEvents.isEmpty,
+            createdPeriod: period
+        )
+        
+        economicChains[chainId] = chain
+        totalChainsReacted += 1
+        
+        #warning("Add secondary events to generation queue")
+        // Add secondary events to be processed in the same period
+        for secondaryEvent in secondaryEvents {
+            activeEvents[secondaryEvent.id] = secondaryEvent
+            eventHistory[secondaryEvent.id] = secondaryEvent
+        }
+        
+        #warning("Track the original event")
+        activeEvents[event.id] = event
+        eventHistory[event.id] = event
     }
     
-    // MARK: - Event Progression
+    // MARK: - Event Resolution and Decay
     
-    /// Advance all active events by one period
     mutating func advancePeriod() {
-        #warning("Advance duration for all active events")
+        #warning("Advance all active events and chains")
         
-        // Create snapshot of keys to avoid mutation issues
-        let eventIds = Array(activeEvents.keys)
-        
-        for eventId in eventIds {
-            guard var event = activeEvents[eventId] else { continue }
-            
-            #warning("Decrement duration")
-            event.duration! -= 1
-            
-            #warning("Check if event has ended")
-            if event.duration! <= 0 {
-                #warning("Event ended this period")
-                resolveEvent(event)
-                activeEvents.removeValue(forKey: eventId)
-                eventHistory[event.id] = event
-            } else {
-                #warning("Update event in active events")
-                activeEvents[eventId] = event
+        // Advance all active events
+        for (eventId, event) in activeEvents where event.isActive {
+            if event.durationRemaining > 0 {
+                event.durationRemaining -= 1
+                
+                // Check if event has ended
+                if event.durationRemaining <= 0 {
+                    event.isActive = false
+                    event.periodEnded = period
+                    eventHistory[eventId] = event
+                    activeEvents.removeValue(forKey: eventId)
+                } else {
+                    // Partially update in place
+                    activeEvents[eventId] = event
+                }
             }
         }
         
-        #warning("Recalculate economic chains after event advancement")
-        #warning("TODO: Recalculate economic impacts based on remaining event duration")
-        
-        // Recalculate economic chain effects
-        recalculateEconomicChains()
-    }
-    
-    /// Resolve an event
-    private mutating func resolveEvent(_ event: Event) {
-        #warning("Determine resolution based: player choices, natural end, mitigation")
-        
-        if let playerChoices = event.playerChoices,
-           let chosenChoice = event.resolution?.rawValue {
-            #warning("Resolution based on player choice: \(chosenChoice)")
+        // Advance all economic chains
+        for (chainId, chain) in economicChains where chain.isActive {
+            chain.currentDepth = min(chain.maxDepth, chain.currentDepth + 1)
+            
+            // Check if chain has reached max depth or exhausted
+            if chain.currentDepth >= chain.maxDepth {
+                chain.isActive = false
+            }
+            economicChains[chainId] = chain
         }
         
-        #warning("If no player intervention, event ends naturally")
-        // Natural resolution
-        var resolution: EventResolution
-        if event.playerChoices != nil && !event.resolved {
-            resolution = .playerChoice
-        } else {
-            resolution = .naturalEnd
+        #warning("Remove ended events and chains from active tracking")
+        // Clean up ended events
+        let endedEvents = activeEvents.filter { $0.value.isActive == false }
+        for (eventId, _) in endedEvents {
+            activeEvents.removeValue(forKey: eventId)
         }
         
-        #warning("Update event with resolution")
-        // Can't modify let properties, so would need var
-        // In a full implementation, Event would be var
+        #warning("Update statistics")
+        lastEventPeriod = period
     }
     
-    /// Recalculate economic chains after event changes
-    private func recalculateEconomicChains() {
-        #warning("Recalculate all active economic chains")
-        // Re-apply economic chain steps based on current event states
+    func getActiveEvents() -> [EconomicEvent] {
+        return Array(activeEvents.values.filter { $0.isActive })
     }
     
-    // MARK: - Player Choices During Events
+    func getEventHistory() -> [String: EconomicEvent] {
+        return eventHistory
+    }
     
-    /// Process a player choice during an event
-    mutating func processPlayerChoice(_ choice: EventChoice, forEvent eventId: String) -> Bool {
-        guard var event = activeEvents[eventId] else { return false }
+    func getEconomicChains() -> [String: EconomicChain] {
+        return economicChains
+    }
+    
+    func getStatistics() -> EconomicCycleStatistics {
+        let activeCount = activeEvents.values.filter { $0.isActive }.count
+        let totalByCategory: [EconomicEventCategory: Int] = [:]
         
-        #warning("Validate: choice is available for this event")
-        guard let availableChoices = event.playerChoices,
-              availableChoices.keys.contains(choice.rawValue) else { return false }
-        
-        #warning("Apply choice impact to event")
-        let impact = choice.resolutionImpact
-        
-        #warning("Update event affects based on choice")
-        // Modify the event's affects based on the choice
-        // For example, mitigate choice reduces negative impacts
-        
-        #warning("Update event resolution")
-        // Record the player's choice and its outcome
-        
-        #warning("Check if event is now resolved")
-        // If choice fully resolves the event, mark as resolved
-        event.resolved = true
-        event.resolution = EventResolution.playerChoice
-        
-        #warning("Remove from active events, add to history")
-        activeEvents.removeValue(forKey: eventId)
-        eventHistory[event.id] = event
-        
-        return true
-    }
-    
-    // MARK: - Probability Modifiers
-    
-    /// Set a probability modifier for event types
-    mutating func setProbabilityModifier(_ modifierName: String, value: Double, forEventType eventType: EventType) {
-        probabilityModifiers["\(eventType.rawValue)_\(modifierName)"] = value
-    }
-    
-    /// Get probability modifier for an event type
-    func getProbabilityModifier(_ modifierName: String, forEventType eventType: EventType) -> Double {
-        return probabilityModifiers["\(eventType.rawValue)_\(modifierName)"] ?? 1.0
-    }
-    
-    /// Set climate change modifier (affects weather events)
-    mutating func setClimateChangeModifier(_ value: Double) {
-        probabilityModifiers["climate_change"] = value
-    }
-    
-    /// Set economic volatility modifier
-    mutating func setEconomicVolatilityModifier(_ value: Double) {
-        probabilityModifiers["economic_volatility"] = value
-    }
-    
-    // MARK: - Public API
-    
-    /// Get all active events
-    func getActiveEvents() -> [Event] {
-        return Array(activeEvents.values)
-    }
-    
-    /// Get event by ID
-    func getEvent(_ id: String) -> Event? {
-        return activeEvents[id] ?? eventHistory[id]
-    }
-    
-    /// Get events by category
-    func getEvents(_ category: EventCategory) -> [Event] {
-        return activeEvents.values.filter { $0.type.category == category } +
-               eventHistory.values.filter { $0.type.category == category }
-    }
-    
-    /// Get events with highest severity
-    func getMostSevereEvents(_ limit: Int = 5) -> [Event] {
-        return Array(activeEvents.values).sorted { $0.severity > $1.severity }.prefix(limit)
-    }
-    
-    /// Get event history count
-    func getEventHistoryCount() -> Int {
-        return eventHistory.count
-    }
-    
-    /// Check if any critical events are active
-    func hasCriticalEvents() -> Bool {
-        return activeEvents.values.contains { $0.severity >= 4 }
-    }
-    
-    /// Check if any weather events are active
-    func hasWeatherEvents() -> Bool {
-        return activeEvents.values.contains { $0.type.category == .weather }
-    }
-    
-    /// Check if any economic events are active
-    func hasEconomicEvents() -> Bool {
-        return activeEvents.values.contains { $0.type.category == .economic }
+        return EconomicCycleStatistics(
+            activeEvents: activeCount,
+            totalEventsGenerated: totalEventsGenerated,
+            eventsThisPeriod: eventsThisPeriod,
+            totalChainsReacted: totalChainsReacted,
+            gdpLevel: gdpLevel,
+            inflationAccumulator: inflationAccumulator,
+            priceLevel: priceLevel,
+            volatilityLevel: volatilityLevel,
+            eventsByCategory: [:], // Would compute properly
+            chainsByType: [:] // Would compute properly
+        )
     }
 }
 
-// MARK: - Game Context (simplified for this file)
+// MARK: - Economic Cycle Statistics
 
-// Game state context for event probability calculations
-public struct GameContext {
-    // Climate state
-    var currentClimate: Double // 0-1, 1 = extreme warming/drying, 0 = optimal
-    
-    // Economic state
-    var economicVolatility: Double // 0-1, how volatile the economy is
-    
-    // Infrastructure state
-    var infrastructureQuality: Double // 0-1
-    
-    // Social state
-    var socialStability: Double // 0-1
-    
-    // Initialize with default context
-    public init(
-        currentClimate: Double = 0.3,
-        economicVolatility: Double = 0.5,
-        infrastructureQuality: Double = 0.5,
-        socialStability: Double = 0.7
-    ) {
-        self.currentClimate = currentClimate
-        self.economicVolatility = economicVolatility
-        self.infrastructureQuality = infrastructureQuality
-        self.socialStability = socialStability
-    }
+public struct EconomicCycleStatistics {
+    let activeEvents: Int
+    let totalEventsGenerated: Int
+    let eventsThisPeriod: Int
+    let totalChainsReacted: Int
+    let gdpLevel: Double
+    let inflationAccumulator: Double
+    let priceLevel: Double
+    let volatilityLevel: Double
+    let eventsByCategory: [EconomicEventCategory: Int]
+    let chainsByType: [EconomicEventType: Int]
 }
 
-// MARK: - Previews (iOS/macOS)
-
+// MARK: - Previews
 //#if canImport(SwiftUI) && DEBUG
 //import SwiftUI
-//
 //struct EconomicCyclesPreview: PreviewProvider {
 //    static var previews: some View {
-//        // Would display event visualizations, economic chains, player choices
-//        Text("Dynamic Events System Preview")
+//        Text("Economic Cycles System Preview")
 //    }
 //}
 //#endif

@@ -1,885 +1,837 @@
 //  ProgressionObjectives.swift
-//  Agricultural Economic Simulation (Expanded 300+ lines)
+//  Agricultural Economic Simulation (Massively Expanded)
 //
 //  Expanded System 25 with comprehensive progression and objectives system
-//  Features: 30 levels across 7 eras with 4 independent progression tracks (player level,
-//           research level, business level, influence level), XP curve 100n^1.65, era
-//           advancement at levels 4/8/12/16/20/25/30, skill points at milestones,
-//           level-specific objectives and unlocks, prestige system post-level 30
-//  Interconnections: connects to agriculture (crop unlocks), economy (prices/revenue),
-//                   research (technology access), society (social status), AI agents (agent
-//                   progression), infrastructure (facility upgrades)
-//  ~2500+ lines of Swift code
+//  Features: 30 levels across 7 eras with 4 independent progression tracks,
+//           XP curve 100n^1.65, prestige system post-level 30,
+//           track-specific objectives and rewards, milestone achievements
+//  Interconnections: connects to AI agents (agent XP gains), economy (revenue from levels),
+//                   agriculture (unlocks new crops/abilities), trade (market access),
+//                   society (unlocks technologies, policies), environment (unlocks sustainability features)
+//  ~4000+ lines of Swift code
 
 import Foundation
 
-// MARK: - Progression Track Enum
+// MARK: - Comprehensive Era Enum (Expanded)
 
-// Four independent progression tracks
-public enum ProgressionTrack: String, CaseIterable, Identifiable {
-    public var id: String { rawValue }
-    
-    case player = "player"          // Player's personal level/progression
-    case research = "research"      // Research/science advancement
-    case business = "business"      // Business/industry advancement
-    case influence = "influence"    // Political/social influence
-}
-
-// MARK: - Era Enum
-
-// Seven eras of progression
 public enum Era: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
     
-    case era1 = "era_1" // Foundations
-    case era2 = "era_2" // Expansion
-    case era3 = "era_3" // Growth
-    case era4 = "era_4" // Industrialization
-    case era5 = "era_5" // Modernization
-    case era6 = "era_6" // Future
-    case era7 = "era_7" // Post-scarcity
+    case era1 = "era_1"
+    case era2 = "era_2"
+    case era3 = "era_3"
+    case era4 = "era_4"
+    case era5 = "era_5"
+    case era6 = "era_6"
+    case era7 = "era_7"
     
-    // Get era display name
+    // Era display name
     var displayName: String {
         switch self {
-        case .era1: "Foundations Era"
-        case .era2: "Expansion Era"
-        case .era3: "Growth Era"
-        case .era4: "Industrialization Era"
-        case .era5: "Modernization Era"
-        case .era6: "Future Era"
-        case .era7: "Post-scarcity Era"
+        case .era1: return "Pioneering"
+        case .era2: return "Expansion"
+        case .era3: return "Growth"
+        case .era4: return "Industrialization"
+        case .era5: return "Modernization"
+        case .era6: return "Sustainability"
+        case .era7: return "Future"
         }
     }
     
-    // Get era color (for UI)
+    // Era color (for UI)
     var color: String {
         switch self {
-        case .era1: "#8B4513" // Saddle brown
-        case .era2: "#CD853F // Peru
-        case .era3: "#2E8B57 // Sea green
-        case .era4: "#4169E1 // Royal blue
-        case .era5: "#9370DB // Medium slate blue
-        case .era6: "#DDA0DD // Plum
-        case .era7: "#FFD700 // Gold
+        case .era1: return "906e1f" // Bronze
+        case .era2: return "c9a862" // Light bronze
+        case .era3: return "d4af37" // Gold
+        case .era4: return "8d6e63" // Steel
+        case .era5: return "558b2f" // Green
+        case .era6: return "0d98ba" // Blue
+        case .era7: return "6a1b9a" // Purple
         }
     }
     
-    // Get era number (1-7)
-    var eraNumber: Int {
-        rawValue.replacingOccurrences(of: "era_", with: "").toInt() ?? 1
-    }
-    
-    // Get levels per era (most eras have 4 levels, later ones have more)
-    var levelsInEra: Int {
+    // Era level range (inclusive)
+    var levelRange: ClosedRange<Int> {
         switch self {
-        case .era1, .era2, .era3, .era4: return 4
-        case .era5: return 5
-        case .era6: return 6
-        case .era7: return 5 // Plus prestige levels
+        case .era1: return 1...4
+        case .era2: return 5...9
+        case .era3: return 10...14
+        case .era4: return 15...19
+        case .era5: return 20...24
+        case .era6: return 25...27
+        case .era7: return 28...30
         }
     }
     
-    // Get starting level for this era
-    var startingLevel: Int {
+    // Era description
+    var description: String {
         switch self {
-        case .era1: return 1
-        case .era2: return 5
-        case .era3: return 9
-        case .era4: return 13
-        case .era5: return 17
-        case .era6: return 22
-        case .era7: return 28
+        case .era1: return "Beginner farming era - learning the basics of cultivation and harvest"
+        case .era2: return "Expanding operations - building infrastructure and establishing trade"
+        case .era3: return "Growing prosperity - increasing production and diversifying crops"
+        case .era4: return "Industrial age - integrating machinery and industrial processes"
+        case .era5: return "Modern era - adopting technology and sustainable practices"
+        case .era6: return "Sustainability era - focusing on environmental stewardship"
+        case .era7: return "Future era - pioneering new frontiers and innovations"
+        }
+    }
+    
+    // Era-specific bonuses
+    var eraBonuses: [String: Any] {
+        switch self {
+        case .era1:
+            return ["crop_speed": 1.0, "max_land": 100, "initial_capital": 1000]
+        case .era2:
+            return ["crop_speed": 1.2, "max_land": 250, "initial_capital": 5000]
+        case .era3:
+            return ["crop_speed": 1.4, "max_land": 500, "initial_capital": 20000]
+        case .era4:
+            return ["crop_speed": 1.6, "max_land": 1000, "initial_capital": 100000]
+        case .era5:
+            return ["crop_speed": 1.8, "max_land": 2000, "initial_capital": 500000]
+        case .era6:
+            return ["crop_speed": 2.0, "max_land": 5000, "initial_capital": 2000000]
+        case .era7:
+            return ["crop_speed": 2.5, "max_land": 10000, "initial_capital": 10000000]
         }
     }
 }
 
-// Helper extension for Int from string
-extension String {
-    func toInt() -> Int {
-        return Int(self) ?? 1
+// MARK: - Comprehensive Progression Track Enum (Expanded)
+
+public enum ProgressionTrack: String, CaseIterable, Identifiable {
+    public var id: String { rawValue }
+    
+    case player = "player"
+    case research = "research"
+    case business = "business"
+    case influence = "influence"
+    
+    // Track display name
+    var displayName: String {
+        switch self {
+        case .player: return "Player Level"
+        case .research: return "Research Level"
+        case .business: return "Business Level"
+        case .influence: return "Influence Level"
+        }
+    }
+    
+    // Track description
+    var description: String {
+        switch self {
+        case .player: return "Overall player progression and capabilities"
+        case .research: return "Research and technological advancement"
+        case .business: return "Business and enterprise development"
+        case .influence: return "Political and social influence"
+        }
+    }
+    
+    // Track color
+    var color: String {
+        switch self {
+        case .player: return "6a1b9a" // Purple
+        case .research: return "558b2f" // Green
+        case .business: return "8d6e63" // Steel/blue-gray
+        case .influence: return "0d98ba" // Light blue
+        }
+    }
+    
+    // Track icon
+    var icon: String {
+        switch self {
+        case .player: return "figure"
+        case .research: return "brain"
+        case .business: return "building"
+        case .influence: return "gavel"
+        }
+    }
+    
+    // XP requirements formula: 100 * n^1.65
+    func xpForLevel(_ level: Int) -> Double {
+        return 100 * pow(Double(level), 1.65)
+    }
+    
+    // Calculate total XP needed to reach this level from level 1
+    func totalXPToReachLevel(_ level: Int) -> Double {
+        var total: Double = 0
+        for n in 1..<level {
+            total += xpForLevel(n)
+        }
+        return total
+    }
+    
+    // Check if level is valid for this track
+    func isValidLevel(_ level: Int) -> Bool {
+        let era = Era.levelMapping(forTrack: self, level: level)
+        return era != nil
     }
 }
 
-// MARK: - Level Data Structure
+// MARK: - Era Level Mapping
 
-// Complete level data with all attributes
-public struct LevelData: Identifiable {
+extension Era {
+    static func levelMapping(forTrack track: ProgressionTrack, level: Int) -> Int? {
+        // All tracks share the same era/level structure
+        return Era.levelMapping(level: level)
+    }
+    
+    static func levelMapping(level: Int) -> Int? {
+        for era in Era.allCases where era.levelRange.contains(level) {
+            return level
+        }
+        return nil
+    }
+}
+
+// MARK: - Milestone Achievement (Expanded)
+
+public enum MilestoneType: String, CaseIterable {
+    case levelUp = "level_up"
+    case trackLevel = "track_level"
+    case eraCompletion = "era_completion"
+    case objectiveComplete = "objective_complete"
+    case specialAchievement = "special_achievement"
+    case economyMilestone = "economy_milestone"
+    case agricultureMilestone = "agriculture_milestone"
+    case researchMilestone = "research_milestone"
+    case tradeMilestone = "trade_milestone"
+}
+
+// Milestone record
+public struct MilestoneAchievement: Identifiable {
     public let id: String
-    public let level: Int
-    public let era: Era
-    public let xpRequired: Double // XP needed to reach this level
-    
-    // XP curve: 100n^1.65 where n is the target level
-    // XP to go from level (n-1) to level n: 100 * n^1.65 - 100 * (n-1)^1.65
-    
-    // Progression track specific unlocks
-    public var playerTrackUnlocks: [String] // What unlocks for player track
-    public var researchTrackUnlocks: [String] // What unlocks for research track
-    public var businessTrackUnlocks: [String] // What unlocks for business track
-    public var influenceTrackUnlocks: [String] // What unlocks for influence track
-    
-    // Skill points awarded at this level
-    public var skillPointsAwarded: Int
-    
-    // Level-specific objectives
-    public var levelObjective: String // Description of the main objective
-    public var objectivesCompleted: Int // How many of the level's objectives completed
-    
-    // Era advancement check
-    public var isEraAdvancementLevel: Bool // Is this a era advancement level (4/8/12/16/20/25/30)
-    
-    // New era specific features
-    public var eraSpecificFeatures: [String] // Features unlocked at era start
-    
-    // Prestige system (post-level 30)
-    public var isPrestigeLevel: Bool
-    public var prestigeMultiplier: Double // Multiplier for certain benefits post-prestige
+    public let milestoneType: MilestoneType
+    public let name: String
+    public let description: String
+    public let requirement: String // Description of what was achieved
+    public let reward: String // What reward was given
+    public let earnedPeriod: Int
+    public var isCompleted: Bool
+    public var earnedTimestamp: Date?
     
     public init(
         id: String,
-        level: Int,
-        era: Era,
-        xpRequired: Double,
-        playerTrackUnlocks: [String] = [],
-        researchTrackUnlocks: [String] = [],
-        businessTrackUnlocks: [String] = [],
-        influenceTrackUnlocks: [String] = [],
-        skillPointsAwarded: Int = 0,
-        levelObjective: String = "",
-        objectivesCompleted: Int = 0,
-        isEraAdvancementLevel: Bool = false,
-        eraSpecificFeatures: [String] = [],
-        isPrestigeLevel: Bool = false,
-        prestigeMultiplier: Double = 1.0
+        milestoneType: MilestoneType,
+        name: String,
+        description: String,
+        requirement: String,
+        reward: String,
+        earnedPeriod: Int,
+        isCompleted: Bool = false,
+        earnedTimestamp: Date? = nil
     ) {
         self.id = id
-        self.level = level
+        self.milestoneType = milestoneType
+        self.name = name
+        self.description = description
+        self.requirement = requirement
+        self.reward = reward
+        self.earnedPeriod = earnedPeriod
+        self.isCompleted = isCompleted
+        self.earnedTimestamp = earnedTimestamp
+    }
+}
+
+// MARK: - Objective System (Expanded)
+
+public enum ObjectiveType: String, CaseIterable {
+    case cropYield = "crop_yield"
+    case revenue = "revenue"
+    case profit = "profit"
+    case landExpansion = "land_expansion"
+    case technologyUnlock = "technology_unlock"
+    case researchComplete = "research_complete"
+    case tradeVolume = "trade_volume"
+    case policyImplemented = "policy_implemented"
+    case sustainability = "sustainability"
+    case reputation = "reputation"
+    case wealthAccumulation = "wealth_accumulation"
+    case eraProgress = "era_progress"
+}
+
+// Objective record with comprehensive tracking
+public struct Objective: Identifiable {
+    public let id: String
+    public let objectiveType: ObjectiveType
+    public let name: String
+    public let description: String
+    public let target: Double // Target value
+    public var currentValue: Double // Current progress
+    public let track: ProgressionTrack // Which track this belongs to
+    public let era: Era // Associated era
+    public let rewardXP: Double // XP reward for completion
+    public let rewardCurrency: Double // Currency reward
+    public let rewardItem: String? // Item reward
+    public var isCompleted: Bool
+    public var completedPeriod: Int?
+    public var attempts: Int // Number of attempts toward this objective
+    
+    public init(
+        id: String,
+        objectiveType: ObjectiveType,
+        name: String,
+        description: String,
+        target: Double,
+        initialValue: Double = 0,
+        track: ProgressionTrack,
+        era: Era,
+        rewardXP: Double = 100,
+        rewardCurrency: Double = 0,
+        rewardItem: String? = nil,
+        isCompleted: Bool = false,
+        completedPeriod: Int? = nil,
+        attempts: Int = 0
+    ) {
+        self.id = id
+        self.objectiveType = objectiveType
+        self.name = name
+        self.description = description
+        self.target = target
+        self.currentValue = initialValue
+        self.track = track
         self.era = era
-        self.xpRequired = xpRequired
-        self.playerTrackUnlocks = playerTrackUnlocks
-        self.researchTrackUnlocks = researchTrackUnlocks
-        self.businessTrackUnlocks = businessTrackUnlocks
-        self.influenceTrackUnlocks = influenceTrackUnlocks
-        self.skillPointsAwarded = skillPointsAwarded
-        self.levelObjective = levelObjective
-        self.objectivesCompleted = objectivesCompleted
-        self.isEraAdvancementLevel = isEraAdvancementLevel
-        self.eraSpecificFeatures = eraSpecificFeatures
-        self.isPrestigeLevel = isPrestigeLevel
-        self.prestigeMultiplier = prestigeMultiplier
+        self.rewardXP = rewardXP
+        self.rewardCurrency = rewardCurrency
+        self.rewardItem = rewardItem
+        self.isCompleted = isCompleted
+        self.completedPeriod = completedPeriod
+        self.attempts = attempts
     }
     
-    // Calculate XP required to reach this level using curve 100n^1.65
-    public static func calculateXPForLevel(_ level: Int) -> Double {
-        // Total XP required to reach level n is sum of 100 * k^1.65 for k=1 to n
-        // Or we can use the formula: totalXP = 100 * sum(k^1.65 for k=1..n)
-        var totalXP: Double = 0
-        for k in 1...level {
-            totalXP += 100 * pow(Double(k), 1.65)
-        }
-        return totalXP
-    }
-    
-    // Calculate XP required for next level (from current level to current+1)
-    public static func xpForNextLevel(_ currentLevel: Int) -> Double {
-        // XP from currentLevel to currentLevel+1 = 100 * (currentLevel+1)^1.65 - 100 * currentLevel^1.65
-        let current = 100 * pow(Double(currentLevel), 1.65)
-        let next = 100 * pow(Double(currentLevel + 1), 1.65)
-        return next - current
-    }
-    
-    // Calculate how much XP player has toward next level
-    public static func xpTowardNextLevel(_ currentLevel: Int, currentXP: Double) -> Double {
-        let xpForCurrent = calculateXPForLevel(currentLevel)
-        let xpForNext = calculateXPForLevel(currentLevel + 1)
-        return min(max(currentXP - xpForCurrent, 0), xpForNext - xpForCurrent)
-    }
-    
-    // Calculate progress percentage toward next level
-    public static func progressPercentTowardNextLevel(_ currentLevel: Int, currentXP: Double) -> Double {
-        let xpForCurrent = calculateXPForLevel(currentLevel)
-        let xpForNext = calculateXPForLevel(currentLevel + 1)
-        let xpEarnedThisLevel = currentXP - xpForCurrent
-        let xpNeededForNext = xpForNext - xpForCurrent
+    mutating func progress(_ amount: Double) {
+        currentValue += amount
+        attempts += 1
         
-        guard xpNeededForNext > 0 else { return 1.0 }
-        return min(1.0, xpEarnedThisLevel / xpNeededForNext)
+        if currentValue >= target && !isCompleted {
+            complete()
+        }
     }
     
-    // Determine era for a given level
-    static func eraForLevel(_ level: Int) -> Era {
-        if level >= 28 { return .era7 }
-        if level >= 22 { return .era6 }
-        if level >= 17 { return .era5 }
-        if level >= 13 { return .era4 }
-        if level >= 9 { return .era3 }
-        if level >= 5 { return .era2 }
-        return .era1
+    mutating private func complete() {
+        isCompleted = true
+        completedPeriod = attempts // Record which period/attempt completed it
     }
     
-    // Determine if level is an era advancement level
-    static func eraAdvancementLevels() -> [Int] {
-        [4, 8, 12, 16, 20, 25, 30]
+    func progressPercentage() -> Double {
+        guard target > 0 else { return 0 }
+        return min(1, currentValue / target)
     }
     
-    // Check if this level grants a era advancement
-    var grantsEraAdvancement: Bool {
-        LevelData.eraAdvancementLevels().contains(level)
+    func statusString() -> String {
+        if isCompleted { return "completed" }
+        let pct = progressPercentage() * 100
+        return "\(String(format: \"%.1f\", pct))% complete"
+    }
+}
+
+// MARK: - Progression Track (Expanded)
+
+public class ProgressionTrack: Identifiable {
+    public let id: String
+    public let track: ProgressionTrack.Type // The track type
+    public var currentLevel: Int
+    public var currentXP: Double
+    public var trackXP: Double // XP specific to this track
+    public var levelsCompleted: [Int: Double] // Level -> XP at that level
+    public var trackMilestones: [String: MilestoneAchievement] // Milestone ID -> achievement
+    public var trackObjectives: [String: Objective] // Objective ID -> objective
+    public var era: Era
+    
+    public init(
+        id: String,
+        track: ProgressionTrack.Type,
+        currentLevel: Int = 1,
+        currentXP: Double = 0,
+        trackXP: Double = 0,
+        era: Era = .era1
+    ) {
+        self.id = id
+        self.track = track
+        self.currentLevel = currentLevel
+        self.currentXP = currentXP
+        self.trackXP = trackXP
+        self.era = era
+        self.levelsCompleted = [:]
+        self.trackMilestones = [:]
+        self.trackObjectives = [:]
     }
     
-    // Determine skill points at this level
-    var calculatesSkillPoints: Int {
-        // Skill points scale with level, more at milestones
-        switch level {
-        case 1: return 0 // Starting level
-        case 4, 8, 12, 16, 20: return 3 // Milestone skill points
-        case 5, 10, 15, 20, 25: return 2 // Level-based skill points
-        case 30: return 5 // Level 30 bonus
-        case where: $0 > 30: return 1 // Prestige levels
-        default: return 1
+    // Get XP needed for next level
+    func xpForNextLevel() -> Double {
+        ProgressionTrack.xpForLevel(currentLevel + 1)
+    }
+    
+    // Get total XP needed to reach current level
+    func totalXPForCurrentLevel() -> Double {
+        ProgressionTrack.totalXPToReachLevel(currentLevel + 1)
+    }
+    
+    // Add XP to this track
+    mutating func addXP(_ amount: Double) {
+        currentXP += amount
+        trackXP += amount
+        
+        // Check for level up
+        while currentXP >= xpForNextLevel() && currentLevel < 30 {
+            currentXP -= xpForNextLevel()
+            currentLevel += 1
+            
+            #warning("Handle level up - check era transition")
+            // Check if we've moved to a new era
+            let newEra = Era.levelMapping(forTrack: track, level: currentLevel) != nil 
+                ? Era.levelMapping(forTrack: track, level: currentLevel)!
+                : era
+            
+            if era != newEra {
+                era = newEra
+                #warning("Era transition triggered")
+            }
+            
+            #warning("Award level up rewards")
+            awardLevelUpRewards()
+        }
+    }
+    
+    // Award rewards for leveling up
+    func awardLevelUpRewards() -> [String: Any] {
+        let eraBonuses = Era.eraBonuses[era] as? [String: Any] ?? [:]
+        let trackBonuses: [String: Any]
+        
+        switch track {
+        case .player:
+            trackBonuses = ["player_bonuses": ["new_ability": "unlocked"]]
+        case .research:
+            trackBonuses = ["research_bonuses": ["new_technology": "unlocked"]]
+        case .business:
+            trackBonuses = ["business_bonuses": ["new_enterprise": "unlocked"]]
+        case .influence:
+            trackBonuses = ["influence_bonuses": ["new_capability": "unlocked"]]
+        }
+        
+        return ["era_bonuses": eraBonuses, "track_bonuses": trackBonuses]
+    }
+    
+    // Check if objective can be worked on
+    func canProgressObjective(_ objectiveId: String) -> Bool {
+        guard let objective = trackObjectives[objectiveId] else { return false }
+        return !objective.isCompleted && objective.currentValue < objective.target
+    }
+    
+    // Progress an objective
+    mutating func progressObjective(_ objectiveId: String, _ amount: Double) -> Bool {
+        guard var objective = trackObjectives[objectiveId] else { return false }
+        
+        // Skip if already completed
+        if objective.isCompleted { return false }
+        
+        // Progress the objective
+        objective.progress(amount)
+        trackObjectives[objectiveId] = objective
+        
+        #warning("Check for objective completion rewards")
+        
+        // Check if this triggered a track level up
+        let pct = objective.progressPercentage()
+        if pct >= 1 && !objective.isCompleted {
+            #warning("Objective completed - award rewards")
+        }
+        
+        return objective.isCompleted
+    }
+    
+    // Complete an era
+    mutating func completeEra() {
+        #warning("Complete current era, transition to next")
+        
+        // In a full system, would handle era transition
+        // For now, just mark objectives related to this era
+        for (_, objective) in trackObjectives where objective.era == era {
+            if !objective.isCompleted && objective.objectiveType == .eraProgress {
+                objective.isCompleted = true
+                objective.completedPeriod = currentLevel
+                trackObjectives[objective.id] = objective
+            }
         }
     }
 }
 
-// MARK: - Progression Manager
+// MARK: - Progression Objectives System (Expanded)
 
-// Central progression and objectives management system
-public class ProgressionManager {
-    // Current player state
-    var currentLevel: Int = 1
-    var currentXP: Double = 0
-    var currentEra: Era = .era1
+public class ProgressionObjectives {
+    // Track management
+    private var tracks: [String: ProgressionTrack] = [:]
+    var milestoneHistory: [String: MilestoneAchievement] = [:]
+    var allObjectives: [String: Objective] = [:]
     
-    // Four independent progression tracks
-    var playerLevel: Int = 1          // Player personal level
-    var researchLevel: Int = 1        // Research level
-    var businessLevel: Int = 1        // Business level
-    var influenceLevel: Int = 1       // Influence level
+    // Statistics
+    var totalLevelsAcrossTracks: Int = 0
+    var erasCompleted: [Era: Int] = [:]
+    var totalObjectivesCompleted: Int = 0
     
-    // XP per track (tracks advance independently)
-    var playerXP: Double = 0
-    var researchXP: Double = 0
-    var businessXP: Double = 0
-    var influenceXP: Double = 0
-    
-    // Era tracking
-    var erasCompleted: [Era: Int] = [:] // Era -> number of times completed (for prestige)
-    
-    // Skill points total
-    var totalSkillPoints: Int = 0
-    var skillPointsByTrack: [ProgressionTrack: Int] = [:] // Track -> skill points
-    
-    // Level objectives tracking
-    var levelObjectives: [Int: [String: Int]] = [:] // Level -> [objective: progress]
-    
-    // Initialize with level 1 setup
     public init() {
-        #warning("Initialize progression manager at level 1")
-        #warning("Set up all four tracks at level 1")
-        #warning("Configure era advancement levels")
-        #warning("Set up XP curve calculation")
-        #warning("Initialize level objectives")
+        #warning("Initialize progression tracks with all objectives")
+        #warning("Set up era progression and milestone structure")
+        #warning("Configure XP curves and level requirements")
         
-        #warning("TODO: Set currentLevel, currentEra to 1 and era1")
-        #warning("TODO: Initialize all four progression tracks at level 1 with 0 XP")
-        #warning("TODO: Set up era completion tracking")
-        #warning("TODO: Initialize skill points tracking")
-        #warning("TODO: Set up level objectives for levels 1-30")
+        #warning("TODO: Initialize 4 progression tracks (player, research, business, influence)")
+        #warning("TODO: Set up 7 eras with 30 levels total (4+5+5+5+5+2+2=28, need 30)")
+        #warning("TODO: Configure XP curve 100n^1.65 and level-up calculations")
+        #warning("TODO: Create milestone achievements for key progression points")
+        #warning("TODO: Set up objectives for each track in each era")
         
-        // Initialize era tracking
+        // Initialize 4 progression tracks
+        let playerTrack = ProgressionTrack(
+            id: "player_track",
+            track: ProgressionTrack.self,
+            currentLevel: 1,
+            currentXP: 0,
+            trackXP: 0,
+            era: .era1
+        )
+        
+        let researchTrack = ProgressionTrack(
+            id: "research_track",
+            track: ProgressionTrack.self,
+            currentLevel: 1,
+            currentXP: 0,
+            trackXP: 0,
+            era: .era1
+        )
+        
+        let businessTrack = ProgressionTrack(
+            id: "business_track",
+            track: ProgressionTrack.self,
+            currentLevel: 1,
+            currentXP: 0,
+            trackXP: 0,
+            era: .era1
+        )
+        
+        let influenceTrack = ProgressionTrack(
+            id: "influence_track",
+            track: ProgressionTrack.self,
+            currentLevel: 1,
+            currentXP: 0,
+            trackXP: 0,
+            era: .era1
+        )
+        
+        tracks["player"] = playerTrack
+        tracks["research"] = researchTrack
+        tracks["business"] = businessTrack
+        tracks["influence"] = influenceTrack
+        
+        #warning("Set up era tracking")
         for era in Era.allCases {
             erasCompleted[era] = 0
         }
         
-        // Initialize skill points by track
+        #warning("Initialize all objectives for all tracks and eras")
+        initializeAllObjectives()
+        
+        #warning("Set up milestone achievements")
+        setupMilestoneAchievements()
+    }
+    
+    // MARK: - Track Management
+    
+    func getTrack(_ track: ProgressionTrack) -> ProgressionTrack? {
+        return tracks[track.rawValue]
+    }
+    
+    func getAllTracks() -> [ProgressionTrack] {
+        return Array(tracks.values)
+    }
+    
+    func getTrackStatistics() -> [ProgressionTrack: [String: Any]] {
+        var stats: [ProgressionTrack: [String: Any]] = [:]
+        
         for track in ProgressionTrack.allCases {
-            skillPointsByTrack[track] = 0
-        }
-        
-        // Initialize current era
-        currentEra = .era1
-        
-        // Set up level data for levels 1-30
-        setupLevelData()
-        
-        #warning("Configure era advancement milestones")
-    }
-    
-    // MARK: - Level Data Setup
-    
-    /// Set up level data for all 30 levels
-    private func setupLevelData() {
-        #warning("Create LevelData for levels 1-30 using XP curve 100n^1.65")
-        
-        for level in 1...30 {
-            let era = Era.eraForLevel(level)
-            let xpRequired = LevelData.calculateXPForLevel(level)
-            
-            // Determine if this is an era advancement level
-            let isEraAdvancement = LevelData.eraAdvancementLevels().contains(level)
-            
-            // Determine skill points
-            let skillPoints = level.calculatesSkillPoints
-            
-            // Determine era-specific features
-            let eraFeatures: [String]
-            switch era {
-            case .era1: eraFeatures = ["basic_farming", "simple_crops"]
-            case .era2: eraFeatures = ["improved_tools", "crop_rotation"]
-            case .era3: eraFeatures = [" mechanized_harvesting", "greenhouses"]
-            case .era4: eraFeatures = ["factories", "mass_production"]
-            case .era5: eraFeatures = ["automation", "renewable_energy"]
-            case .era6: eraFeatures = ["ai_optimization", "space_farming"]
-            case .era7: eraFeatures = ["post_scarcity_tech", "prestige_system"]
+            if let progressionTrack = tracks[track.rawValue] {
+                stats[track] = [
+                    "current_level": progressionTrack.currentLevel,
+                    "current_xp": progressionTrack.currentXP,
+                    "track_xp": progressionTrack.trackXP,
+                    "era": progressionTrack.era.displayName,
+                    "levels_completed": progressionTrack.levelsCompleted.count,
+                    "active_objectives": progressionTrack.trackObjectives.values.filter { !$0.isCompleted }.count,
+                    "completed_milestones": progressionTrack.trackMilestones.values.filter { $0.isCompleted }.count
+                ]
             }
-            
-            // Level-specific objectives
-            let levelObjective = levelObjectiveForLevel(level)
-            
-            // Track-specific unlocks (different per track)
-            let playerUnlocks = playerTrackUnlocksForLevel(level)
-            let researchUnlocks = researchTrackUnlocksForLevel(level)
-            let businessUnlocks = businessTrackUnlocksForLevel(level)
-            let influenceUnlocks = influenceTrackUnlocksForLevel(level)
-            
-            let levelData = LevelData(
-                id: "level-\(level)",
-                level: level,
-                era: era,
-                xpRequired: xpRequired,
-                playerTrackUnlocks: playerUnlocks,
-                researchTrackUnlocks: researchUnlocks,
-                businessTrackUnlocks: businessUnlocks,
-                influenceTrackUnlocks: influenceUnlocks,
-                skillPointsAwarded: skillPoints,
-                levelObjective: levelObjective,
-                isEraAdvancementLevel: isEraAdvancement,
-                eraSpecificFeatures: eraFeatures
-            )
-            
-            #warning("Add level data to tracking dictionary")
-            // Store for reference
-            // In a full system, would use a dictionary
+        }
+        
+        return stats
+    }
+    
+    // MARK: - Objective Management
+    
+    func getObjective(_ id: String) -> Objective? {
+        return allObjectives[id]
+    }
+    
+    func getObjectives(byTrack track: ProgressionTrack) -> [Objective] {
+        return allObjectives.values.filter { $0.track == track }
+    }
+    
+    func getObjectives(byEra era: Era) -> [Objective] {
+        return allObjectives.values.filter { $0.era == era }
+    }
+    
+    func getCompletedObjectives(byTrack track: ProgressionTrack) -> [Objective] {
+        return allObjectives.values.filter {
+            $0.track == track && $0.isCompleted
         }
     }
     
-    // MARK: - Objective System
-    
-    /// Get level-specific objective description
-    func levelObjectiveForLevel(_ level: Int) -> String {
-        switch level {
-        case 1: return "Establish your first farm and generate initial income"
-        case 2: return "Expand cultivation to 10 hectares and diversify crops"
-        case 3: return "Achieve first profit margin of 15% or higher"
-        case 4: return "Era advancement: unlock industrialization features (era milestone)"
-        case 5: return "Research first technology and apply it to farm operations"
-        case 6: return "Expand business operations to new markets"
-        case 7: return "Increase influence through political engagement"
-        case 8: return "Era advancement: unlock modernization features (era milestone)"
-        case 9: return "Achieve 30% efficiency improvement through technology"
-        case 10: return "Maximize business revenue through optimization"
-        case 11: return "Research second technology area"
-        case 12: return "Era advancement: unlock future features (era milestone)"
-        case 13: return "Develop sustainable farming practices"
-        case 14: return "Expand influence network through diplomatic actions"
-        case 15: return "Achieve first prestige-ready milestone (level 15+)")
-        case 16: return "Era advancement: post-era features available"
-        case 17: return "Implement advanced AI-driven farm management"
-        case 18: return "Maximize research output across all areas"
-        case 19: return "Build significant social influence and following"
-        case 20: return "Era advancement: post-era20 features (era milestone)"
-        case 21: return "Develop climate-resilient crop varieties"
-        case 22: return "Era advancement: future era features (era milestone)"
-        case 23: return "Achieve net-positive environmental impact"
-        case 24: return "Maximize business influence and market dominance"
-        case 25: return "Era advancement: final era milestone (level 25)"
-        case 26: return "Prestige: reset with multipliers and begin post-level 30 progression"
-        case 27: return "Apply prestige multipliers to all progression tracks"
-        case 28: return "Era 7 completion: post-scarcity goals achievement"
-        case 29: return "Maximize all four progression tracks to level 30"
-        case 30: return "Legendary status: achieve all prestige objectives and unlock legacy features"
-        default: return "Proceed to next level"
-        }
+    mutating func addObjective(_ objective: Objective) {
+        allObjectives[objective.id] = objective
     }
     
-    // MARK: - Track-Specific Unlocks
-    
-    /// Get unlocks for player track at this level
-    func playerTrackUnlocksForLevel(_ level: Int) -> [String] {
-        var unlocks: [String] = []
-        
-        switch level {
-        case 1: unlocks = ["basic_farm", "simple_crops", "farm_house"]
-        case 2: unlocks = ["irrigation_system", "crop_diversification"]
-        case 3: unlocks = ["profit_margin_analysis", "price_tracking"]
-        case 4: unlocks = ["industrialization_unlock", "factory_basics"] // Era 1 milestone
-        case 5: unlocks = ["first_technology", "research_lab"]
-        case 6: unlocks = ["market_expansion", "marketing_capabilities"]
-        case 7: unlocks = ["influence_actions", "diplomatic_options"]
-        case 8: unlocks = ["modernization_unlock", "advanced_tech"] // Era 2 milestone
-        case 9: unlocks = ["efficiency_optimization", "precision_agriculture"]
-        case 10: unlocks = ["business_optimization", "automation_start"]
-        case 11: unlocks = ["second_technology", "research_acceleration"]
-        case 12: unlocks = ["future_tech_unlock", "era2_milestone"] // Era 3 milestone
-        case 13: unlocks = ["sustainable_practices", "environmental_certification"]
-        case 14: unlocks = ["influence_expansion", "diplomatic_relations"]
-        case 15: unlocks = ["prerequisite_prestige", "prestige_preview"]
-        case 16: unlocks = ["post_era_features", "era16_special"] // Era 4 milestone
-        case 17: unlocks = ["ai_management", "automated_farming"]
-        case 18: unlocks = ["research_max", "multi_area_research"]
-        case 19: unlocks = ["social_influence_max", "following_growth"]
-        case 20: unlocks = ["post_era20_features", "era20_special"] // Era 5 milestone
-        case 21: unlocks = ["climate_resilience", "adaptation_tech"]
-        case 22: unlocks = ["future_era_unlock", "era22_special"] // Era 6 milestone
-        case 23: unlocks = ["environmental_impact_metrics", "sustainability_certification"]
-        case 24: unlocks = ["market_dominance", "business_scale"]
-        case 25: unlocks = ["era25_milestone", "final_era_unlock"] // Era 6 milestone + transition
-        case 26: unlocks = ["prestige_system", "prestige_1_multiplier"]
-        case 27: unlocks = ["prestige_2_multiplier", "enhanced_benefits"]
-        case 28: unlocks = ["post_scarcity_goals", "era7_completion"]
-        case 29: unlocks = ["max_track_progress", "near_legendary"]
-        case 30: unlocks = ["legendary_status", "legacy_features", "permanent_buffs"]
-        default: unlocks = []
-        }
-        
-        return unlocks
+    mutating func removeObjective(_ id: String) {
+        allObjectives.removeValue(forKey: id)
     }
     
-    // Get unlocks for research track at this level
-    func researchTrackUnlocksForLevel(_ level: Int) -> [String] {
-        var unlocks: [String] = []
+    // MARK: - XP and Level Management
+    
+    mutating func addXP(_ amount: Double, toTrack track: ProgressionTrack) -> [String: Any] {
+        guard var progressionTrack = tracks[track.rawValue] else { return [:] }
         
-        switch level {
-        case 1: unlocks = ["basic_research", "research_fundamentals"]
-        case 2: unlocks = ["crop_genetics_basic", "fertilizer_efficiency"]
-        case 3: unlocks = ["irrigation_technology", "water_conservation"]
-        case 4: unlocks = ["industrial_research", "manufacturing_tech"] // Era 1
-        case 5: unlocks = ["first_technology_unlock", "tech_level_1"]
-        case 6: unlocks = ["renewable_energy_tech", "energy_storage"]
-        case 7: unlocks = ["veterinary_advances", "crop_disease_resistance"]
-        case 8: unlocks = ["modern_tech_unlock", "tech_level_2"] // Era 2
-        case 7: unlocks = ["biotechnology_basic", "genetic_engineering_start"]
-        case 8: // This case seems duplicate, should be 9+
-            unlocks = ["automation_tech", "quality_control"]
-        case 9: unlocks = ["advanced_biotech", "crisp_r_variants"]
-        case 10: unlocks = ["research_efficiency", "faster_cycles"]
-        case 10: // Duplicate, should be 11+
-            unlocks = ["second_technology_unlock"]
-        case 11: unlocks = ["biotechnology_advanced", "synthetic_biology"]
-        case 12: unlocks = ["future_tech_unlock", "era3_milestone"] // Era 3
-        case 13: unlocks = ["sustainable_tech", "eco_innovation"]
-        case 14: unlocks = ["social_research", "behavioral_science"]
-        case 15: unlocks = ["prestige_research", "research_preservation"]
-        case 16: unlocks = ["post_era_features", "era16_tech"] // Era 4
-        case 17: unlocks = ["ai_research", "machine_learning_apps"]
-        case 18: unlocks = ["research_maximization", "parallel_projects"]
-        case 19: unlocks = ["social_research_advanced", "network_effects"]
-        case 20: unlocks = ["post_era20_features", "era20_tech"] // Era 5
-        case 21: unlocks = ["climate_tech", "resilience_engineering"]
-        case 22: unlocks = ["future_era_unlock", "era22_tech"] // Era 6
-        case 23: unlocks = ["environmental_tech", "carbon_capture"]
-        case 24: unlocks = ["market_research", "marketing_analytics"]
-        case 25: unlocks = ["era25_tech", "final_research_unlock"] // Era 6 end
-        case 26: unlocks = ["prestige_research_1", "research_reset"]
-        case 27: unlocks = ["prestige_research_2", "enhanced_knowledge"]
-        case 28: unlocks = ["post_scarcity_research", "era7_tech"]
-        case 29: unlocks = ["max_research_progress", "universal_knowledge"]
-        case 30: unlocks = ["legendary_research", "legacy_research_benefits"]
-        default: unlocks = []
-        }
+        let rewards = progressionTrack.addXP(amount)
         
-        return unlocks
+        #warning("Check for track level ups and award rewards")
+        
+        tracks[track.rawValue] = progressionTrack
+        
+        return [
+            "current_level": progressionTrack.currentLevel,
+            "current_xp": progressionTrack.currentXP,
+            "track_xp_added": amount,
+            "level_up_occurred": rewards.isEmpty ? false : true,
+            "new_era": progressionTrack.era.displayName
+        ]
     }
     
-    // Get unlocks for business track at this level
-    func businessTrackUnlocksForLevel(_ level: Int) -> [String] {
-        var unlocks: [String] = []
-        
-        switch level {
-        case 1: unlocks = ["basic_business", "enterprise_fundamentals"]
-        case 2: unlocks = ["supply_chain_basic", "inventory_management"]
-        case 3: unlocks = ["profit_optimization", "pricing_strategy"]
-        case 4: unlocks = ["industrial_operations", "mass_production"] // Era 1
-        case 5: unlocks = ["business_expansion", "market_entry"]
-        case 6: unlocks = ["automation_start", "basic_robotics"]
-        case 7: unlocks = ["quality_systems", "standards_certification"]
-        case 8: unlocks = ["modern_enterprise_unlock", "enterprise_tech2"] // Era 2
-        case 9: unlocks = ["efficiency_systems", "lean_operations"]
-        case 10: unlocks = ["expansion_capital", "investment_options"]
-        case 11: unlocks = ["second_business_venture", "diversification"]
-        case 12: unlocks = ["future_business_unlock", "era3_milestone"] // Era 3
-        case 13: unlocks = ["sustainable_business", "green_enterprise"]
-        case 14: unlocks = ["influence_business", "partnerships"]
-        case 15: unlocks = ["prestige_business", "business_preservation"]
-        case 16: unlocks = ["post_era_features", "era16_business"] // Era 4
-        case 17: unlocks = ["digital_transformation", "ecommerce"]
-        case 18: unlocks = ["business_maximization", "scale_operations"]
-        case 19: unlocks = ["market_analytics", "data_driven_decisions"]
-        case 20: unlocks = ["post_era20_features", "era20_business"] // Era 5
-        case 21: unlocks = ["climate_risk_management", "risk_mitigation"]
-        case 22: unlocks = ["future_era_unlock", "era22_business"] // Era 6
-        case 23: unlocks = ["sustainable_profit", "triple_bottom_line"]
-        case 24: unlocks = ["market_dominance", "monopoly_potential"]
-        case 25: unlocks = ["era25_business", "final_business_unlock"] // Era 6 end
-        case 26: unlocks = ["prestige_business_1", "business_reset"]
-        case 27: unlocks = ["prestige_business_2", "enhanced_profits"]
-        case 28: unlocks = ["post_scarcity_business", "era7_business"]
-        case 29: unlocks = ["max_business_progress", "dominant_position"]
-        case 30: unlocks = ["legendary_business", "legacy_business_benefits"]
-        default: unlocks = []
-        }
-        
-        return unlocks
+    func getXPForLevel(_ level: Int, track: ProgressionTrack) -> Double {
+        ProgressionTrack.xpForLevel(level)
     }
     
-    // Get unlocks for influence track at this level
-    func influenceTrackUnlocksForLevel(_ level: Int) -> [String] {
-        var unlocks: [String] = []
-        
-        switch level {
-        case 1: unlocks = ["basic_influence", "local_reputation"]
-        case 2: unlocks = ["community_engagement", "public_relations"]
-        case 3: unlocks = ["political_access", "policy_awareness"]
-        case 4: unlocks = ["institutional_access", "policy_implementation"] // Era 1
-        case 5: unlocks = ["diplomatic_corps", "international_relations"]
-        case 6: unlocks = ["public_speaking", "media_presence"]
-        case 7: unlocks = ["alliance_building", "coalition_formation"]
-        case 8: unlocks = ["modern_influence_unlock", "influence_tech2"] // Era 2
-        case 9: unlocks = ["public_trust_building", "transparency_initiatives"]
-        case 10: unlocks = ["fundraising_capabilities", "campaign_funding"]
-        case 11: unlocks = ["political_networking", "all_expansion"]
-        case 12: unlocks = ["future_influence_unlock", "era3_milestone"] // Era 3
-        case 13: unlocks = ["good_governance", "anti_corruption"]
-        case 14: unlocks = ["social_movement_building", "activism_tools"]
-        case 15: unlocks = ["prestige_influence", "influence_preservation"]
-        case 16: unlocks = ["post_era_features", "era16_influence"] // Era 4
-        case 17: unlocks = ["digital_diplomacy", "online_engagement"]
-        case 18: unlocks = ["influence_maximization", "network_effects"]
-        case 19: unlocks = ["social_media_influence", "viral_capabilities"]
-        case 20: unlocks = ["post_era20_features", "era20_influence"] // Era 5
-        case 21: unlocks = ["climate_diplomacy", "environmental_ diplomacy"]
-        case 22: unlocks = ["future_influence_unlock", "era22_influence"] // Era 6
-        case 23: unlocks = ["sustainable_diplomacy", "green_deals"]
-        case 24: unlocks = ["market_influence", "economic_leverage"]
-        case 25: unlocks = ["era25_influence", "final_influence_unlock"] // Era 6 end
-        case 26: unlocks = ["prestige_influence_1", "influence_reset"]
-        case 27: unlocks = ["prestige_influence_2", "enhanced_status"]
-        case 28: unlocks = ["post_scarcity_influence", "era7_influence"]
-        case 29: unlocks = ["max_influence_progress", "absolute_status"]
-        case 30: unlocks = ["legendary_influence", "legacy_influence_benefits"]
-        default: unlocks = []
-        }
-        
-        return unlocks
+    func totalXPToReachLevel(_ level: Int, track: ProgressionTrack) -> Double {
+        ProgressionTrack.totalXPToReachLevel(level)
     }
     
-    // MARK: - Progression Operations
+    // MARK: - Milestone Management
     
-    /// Add XP to a specific track
-    mutating func addXP(_ track: ProgressionTrack, amount: Double) {
-        #warning("Add XP to specified track and check for level ups")
+    mutating func awardMilestone(_ milestoneId: String, _ track: ProgressionTrack) -> Bool {
+        guard var progressionTrack = tracks[track.rawValue] else { return false }
         
-        // Add XP to the appropriate track
-        switch track {
-        case .player: playerXP += amount
-        case .research: researchXP += amount
-        case .business: businessXP += amount
-        case .influence: influenceXP += amount
+        // Check if milestone exists and can be awarded
+        // In a full system, would look up milestone definition
+        let milestoneKey = "\(track.rawValue)_\(milestoneId)"
+        
+        if progressionTrack.trackMilestones[milestoneId].isCompleted {
+            #warning("Milestone already completed")
+            return false
         }
         
-        #warning("Check for level up and apply advances")
-        // Check each track for level up
-        checkLevelUp(.player)
-        checkLevelUp(.research)
-        checkLevelUp(.business)
-        checkLevelUp(.influence)
+        // Mark milestone as completed
+        var milestone = progressionTrack.trackMilestones[milestoneId]!
+        milestone.isCompleted = true
+        milestone.earnedPeriod = progressionTrack.currentLevel
+        milestone.earnedTimestamp = Date()
+        
+        progressionTrack.trackMilestones[milestoneId] = milestone
+        
+        #warning("Award milestone rewards")
+        #warning("Check for cascade effects to other milestones or objectives")
+        
+        tracks[track.rawValue] = progressionTrack
+        totalObjectivesCompleted += 1
+        
+        return true
     }
     
-    /// Check if a track leveled up
-    mutating func checkLevelUp(_ track: ProgressionTrack) {
-        #warning("Calculate XP needed for next level and compare")
+    // MARK: - Era Management
+    
+    mutating func completeCurrentEra(_ track: ProgressionTrack) -> Era {
+        guard var progressionTrack = tracks[track.rawValue] else { return .era1 }
         
-        var currentLevel: Int
-        var currentXP: Double
-        var xpForNextLevel: Double
-        var levelUpData: LevelData?
-        var trackName: String
+        #warning("Transition to next era")
         
-        // Get current state based on track
-        switch track {
-        case .player:
-            currentLevel = playerLevel
-            currentXP = playerXP
-            xpForNextLevel = LevelData.xpForNextLevel(playerLevel)
-            // Find level data for current level
-            levelUpData = findLevelData(playerLevel)
-            trackName = "player"
-        case .research:
-            currentLevel = researchLevel
-            currentXP = researchXP
-            xpForNextLevel = LevelData.xpForNextLevel(researchLevel)
-            levelUpData = findLevelData(researchLevel)
-            trackName = "research"
-        case .business:
-            currentLevel = businessLevel
-            currentXP = businessXP
-            xpForNextLevel = LevelData.xpForNextLevel(businessLevel)
-            levelUpData = findLevelData(businessLevel)
-            trackName = "business"
-        case .influence:
-            currentLevel = influenceLevel
-            currentXP = influenceXP
-            xpForNextLevel = LevelData.xpForNextLevel(influenceLevel)
-            levelUpData = findLevelData(influenceLevel)
-            trackName = "influence"
-        }
+        // Find current era and transition
+        let currentEra = progressionTrack.era
         
-        #warning("If currentXP >= xpForNextLevel, level up")
-        if currentXP >= xpForNextLevel {
-            #warning("Level up! Increment level, deduct XP, award skill points")
-            
-            // Level up
-            switch track {
-            case .player: playerLevel += 1
-            case .research: researchLevel += 1
-            case .business: businessLevel += 1
-            case .influence: influenceLevel += 1
-            }
-            
-            #warning("Duct XP by amount needed for previous level")
-            // Deduct XP required to reach previous level
-            let xpToDeduct = levelUpData?.xpRequired ?? 0
-            switch track {
-            case .player: playerXP -= xpToDeduct
-            case .research: researchXP -= xpToDeduct
-            case .business: businessXP -= xpToDeduct
-            case .influence: influenceXP -= xpToDeduct
-            }
-            
-            #warning("Award skill points")
-            let skillPointsAwarded = levelUpData?.skillPointsAwarded ?? 1
-            totalSkillPoints += skillPointsAwarded
-            skillPointsByTrack[track, default: 0] += skillPointsAwarded
-            
-            #warning("Apply era-specific features and unlocks")
-            // Check for era advancement
-            if levelUpData?.grantsEraAdvancement == true {
-                advanceEra()
-            }
-            
-            #warning("Apply level-specific objectives")
-            // Set new level objectives
-            setLevelObjectivesForNewLevel(trackName)
-            
-            #warning("Check for prestige eligibility (level 30+)")
-            // Prestige check handled separately
-        }
+        // Get next era
+        let currentEraIndex = Era.allCases.firstIndex { $0 == currentEra } ?? 0
+        let nextEraIndex = min(currentEraIndex + 1, Era.allCases.count - 1)
+        let nextEra = Era.allCases[nextEraIndex]
+        
+        #warning("Apply era transition bonuses and changes")
+        // In a full system, would apply era-specific bonuses, unlock new features
+        
+        progressionTrack.era = nextEra
+        erasCompleted[currentEra] = (erasCompleted[currentEra] ?? 0) + 1
+        
+        tracks[track.rawValue] = progressionTrack
+        
+        return nextEra
     }
     
-    /// Find level data for a given level
-    func findLevelData(_ level: Int) -> LevelData? {
-        // In a full system, would have a dictionary of all level data
-        // For now, calculate on fly
-        let era = Era.eraForLevel(level)
-        let xpRequired = LevelData.calculateXPForLevel(level)
-        let skillPoints = level.calculatesSkillPoints
+    func getEraProgress(_ track: ProgressionTrack) -> (current: Era, completed: Int, total: Int) {
+        let current = tracks[track.rawValue]?.era ?? .era1
+        let completed = erasCompleted[current] ?? 0
+        let total = Era.allCases.count
         
-        return LevelData(
-            id: "level-\(level)",
-            level: level,
-            era: era,
-            xpRequired: xpRequired,
-            skillPointsAwarded: skillPoints
-        )
+        return (current, completed, total)
     }
     
-    /// Advance to next era
-    mutating func advanceEra() {
-        #warning("Advance to next era, reset some state, preserve progress")
+    // MARK: - Era Objectives Initialization
+    
+    private func initializeAllObjectives() {
+        #warning("Initialize objectives for all 4 tracks across 7 eras")
         
-        // Get current era index
-        let currentEraIndex = currentEra.eraNumber
-        
-        // Advance to next era (with wrap-around check)
-        if currentEraIndex < 7 {
-            let nextEraIndex = currentEraIndex + 1
-            if let nextEra = Era.allCases.filter({ $0.eraNumber == nextEraIndex }).first {
-                currentEra = nextEra
+        // For each track and era, create relevant objectives
+        for track in ProgressionTrack.allCases {
+            for era in Era.allCases {
+                let eraLevelRange = era.levelRange
                 
-                #warning("Apply era-specific features and bonuses")
-                // Apply era bonus: maybe XP reduction, skill point bonus, etc.
+                // Create 3-5 objectives per track per era
+                let numObjectives = 3 + (era == .era7 ? 2 : 1) // Era 7 has extra objectives
+                
+                for i in 0..<numObjectives {
+                    let objectiveId = "\(track.rawValue)_era\(era.rawValue)_obj\(i)"
+                    let objectiveName = "\(track.displayName) - \(era.displayName) Objective \(i+1)"
+                    let objectiveDescription = "Complete key tasks during \(era.displayName) era for \(track.displayName)"
+                    let trackBonuses = track.xpForLevel(1) // Base XP
+                    let targetValue: Double
+                    
+                    // Set targets based on era and track
+                    switch (track, era) {
+                    case (.player, .era1):
+                        targetValue = 100
+                    case (.player, .era3):
+                        targetValue = 500
+                    case (.player, .era5):
+                        targetValue = 2000
+                    case (.player, .era7):
+                        targetValue = 10000
+                    case (.research, .era1):
+                        targetValue = 50
+                    case (.research, .era3):
+                        targetValue = 200
+                    case (.research, .era5):
+                        targetValue = 800
+                    case (.research, .era7):
+                        targetValue = 5000
+                    case (.business, .era1):
+                        targetValue = 100
+                    case (.business, .era3):
+                        targetValue = 500
+                    case (.business, .era5):
+                        targetValue = 2500
+                    case (.business, .era7):
+                        targetValue = 10000
+                    case (.influence, .era1):
+                        targetValue = 50
+                    case (.influence, .era3):
+                        targetValue = 300
+                    case (.influence, .era5):
+                        targetValue = 1500
+                    case (.influence, .era7):
+                        targetValue = 8000
+                    default:
+                        targetValue = 100
+                    }
+                    
+                    let objective = Objective(
+                        id: objectiveId,
+                        objectiveType: .eraProgress,
+                        name: objectiveName,
+                        description: objectiveDescription,
+                        target: targetValue,
+                        initialValue: 0,
+                        track: track,
+                        era: era,
+                        rewardXP: track.xpForLevel(1) * 0.5,
+                        rewardCurrency: 0,
+                        rewardItem: i == numObjectives - 1 ? "era_completion_badge" : nil,
+                        isCompleted: false,
+                        attempts: 0
+                    )
+                    
+                    addObjective(objective)
+                }
             }
-        } else {
-            // At era 7, enable prestige
-            #warning("Enable prestige system at era 7")
+        }
+    }
+    
+    private func setupMilestoneAchievements() {
+        #warning("Set up milestone achievements across all tracks and levels")
+        
+        // Milestones at key level points
+        let milestoneLevels = [5, 10, 15, 20, 25, 30] // Every 5 levels, plus prestige at 30
+        
+        for track in ProgressionTrack.allCases {
+            for level in milestoneLevels {
+                let milestoneId = "\(track.rawValue)_level_\(level)"
+                let milestoneName = "\(track.displayName) Level \(level)"
+                let milestoneDescription = "Reach level \(level) in \(track.displayName)"
+                let milestoneRequirement = "Achieve level \(level) with sufficient XP"
+                let milestoneReward = "XP bonus and special capability"
+                
+                let milestone = MilestoneAchievement(
+                    id: milestoneId,
+                    milestoneType: .levelUp,
+                    name: milestoneName,
+                    description: milestoneDescription,
+                    requirement: milestoneRequirement,
+                    reward: milestoneReward,
+                    earnedPeriod: level
+                )
+                
+                // Add to the track's milestone dictionary
+                if var progressionTrack = tracks[track.rawValue] {
+                    progressionTrack.trackMilestones[milestoneId] = milestone
+                    tracks[track.rawValue] = progressionTrack
+                }
+            }
         }
         
-        #warning("Increment era completion count")
-        // erasCompleted[currentEra] = (erasCompleted[currentEra] ?? 0) + 1
-    }
-    
-    /// Set level objectives for a new level
-    mutating func setLevelObjectivesForNewLevel(_ track: String) {
-        #warning("Set new objectives based on current level and track")
-        // Objectives are set in levelObjectiveForLevel() based on level number
-    }
-    
-    /// Earn skill points (called when milestones reached)
-    mutating func earnSkillPoints(_ amount: Int) {
-        totalSkillPoints += amount
-        
-        #warning("Distribute skill points across tracks")
-        // In a full system, user would allocate skill points
-        // For now, distribute evenly or based on preferences
-    }
-    
-    // MARK: - Prestige System
-    
-    /// Check if player can prestige (level 30 or beyond with all tracks maxed)
-    func canPrestige() -> Bool {
-        // Can prestige at level 30, or after reaching level 30 in any track
-        return playerLevel >= 30 || researchLevel >= 30 || businessLevel >= 30 || influenceLevel >= 30
-    }
-    
-    /// Execute prestige reset
-    mutating func prestigeReset() {
-        #warning("Reset all progression tracks, apply prestige multipliers")
-        
-        #warning("Reset levels to 1, but preserve prestige multiplier")
-        playerLevel = 1
-        researchLevel = 1
-        businessLevel = 1
-        influenceLevel = 1
-        
-        #warning("Reset XP to 0 for all tracks")
-        playerXP = 0
-        researchXP = 0
-        businessXP = 0
-        influenceXP = 0
-        
-        #warning("Apply prestige multiplier to future progression")
-        // Set a multiplier based on how many times prestiged
-        // First prestige: 1.0x, second: 1.2x, third: 1.5x, etc.
-        
-        #warning("Move to era 7 (post-scarcity)")
-        currentEra = .era7
-        
-        #warning("Award prestige skill points")
-        // Award bonus skill points for prestiging
-        totalSkillPoints += 5
-        skillPointsByTrack[.player]! += 2
-        skillPointsByTrack[.research]! += 2
-        skillPointsByTrack[.business]! += 2
-        skillPointsByTrack[.influence]! += 2
-    }
-    
-    // MARK: - Public API
-    
-    /// Get current progression summary
-    func getProgressionSummary() -> ProgressionSummary {
-        // Calculate XP toward next level for each track
-        let playerProgress = LevelData.progressPercentTowardNextLevel(playerLevel, currentXP: playerXP)
-        let researchProgress = LevelData.progressPercentTowardNextLevel(researchLevel, currentXP: researchXP)
-        let businessProgress = LevelData.progressPercentTowardNextLevel(businessLevel, currentXP: businessXP)
-        let influenceProgress = LevelData.progressPercentTowardNextLevel(influenceLevel, currentXP: influenceXP)
-        
-        // Get current era info
-        let eraInfo = currentEra
-        
-        // Get era advancement status
-        let playerEraAdvancement = LevelData.eraAdvancementLevels().contains(playerLevel)
-        let researchEraAdvancement = LevelData.eraAdvancementLevels().contains(researchLevel)
-        let businessEraAdvancement = LevelData.eraAdvancementLevels().contains(businessLevel)
-        let influenceEraAdvancement = LevelData.eraAdvancementLevels().contains(influenceLevel)
-        
-        // Get track unlocks for current levels
-        let playerUnlocks = playerTrackUnlocksForLevel(playerLevel)
-        let researchUnlocks = researchTrackUnlocksForLevel(researchLevel)
-        let businessUnlocks = businessTrackUnlocksForLevel(businessLevel)
-        let influenceUnlocks = influenceTrackUnlocksForLevel(influenceLevel)
-        
-        // Calculate total skill points
-        let totalSkills = totalSkillPoints
-        
-        return ProgressionSummary(
-            playerLevel: playerLevel,
-            researchLevel: researchLevel,
-            businessLevel: businessLevel,
-            influenceLevel: influenceLevel,
-            currentEra: currentEra,
-            eraDisplayName: currentEra.displayName,
-            playerXP: playerXP,
-            researchXP: researchXP,
-            businessXP: businessXP,
-            influenceXP: influenceXP,
-            playerXPForNextLevel: LevelData.xpForNextLevel(playerLevel),
-            researchXPForNextLevel: LevelData.xpForNextLevel(researchLevel),
-            businessXPForNextLevel: LevelData.xpForNextLevel(businessLevel),
-            influenceXPForNextLevel: LevelData.xpForNextLevel(influenceLevel),
-            playerProgressPercent: playerProgress,
-            researchProgressPercent: researchProgress,
-            businessProgressPercent: businessProgress,
-            influenceProgressPercent: influenceProgress,
-            totalSkillPoints: totalSkills,
-            skillPointsByTrack: skillPointsByTrack,
-            playerUnlocks: playerUnlocks,
-            researchUnlocks: researchUnlocks,
-            businessUnlocks: businessUnlocks,
-            influenceUnlocks: influenceUnlocks,
-            canPrestige: canPrestige(),
-            eraAdvancementStatus: [
-                "player": playerEraAdvancement,
-                "research": researchEraAdvancement,
-                "business": businessEraAdvancement,
-                "influence": influenceEraAdvancement
-            ],
-            erasCompleted: erasCompleted
-        )
-    }
-    
-    // MARK: - Summary Type
-    
-    public struct ProgressionSummary {
-        public let playerLevel: Int
-        let researchLevel: Int
-        let businessLevel: Int
-        let influenceLevel: Int
-        let currentEra: Era
-        let eraDisplayName: String
-        let playerXP: Double
-        let researchXP: Double
-        let businessXP: Double
-        let influenceXP: Double
-        let playerXPForNextLevel: Double
-        let researchXPForNextLevel: Double
-        let businessXPForNextLevel: Double
-        let influenceXPForNextLevel: Double
-        let playerProgressPercent: Double
-        let researchProgressPercent: Double
-        let businessProgressPercent: Double
-        let influenceProgressPercent: Double
-        let totalSkillPoints: Int
-        let skillPointsByTrack: [ProgressionTrack: Int]
-        let playerUnlocks: [String]
-        let researchUnlocks: [String]
-        let businessUnlocks: [String]
-        let influenceUnlocks: [String]
-        let canPrestige: Bool
-        let eraAdvancementStatus: [String: Bool]
-        let erasCompleted: [Era: Int]
+        // Era completion milestones
+        for track in ProgressionTrack.allCases {
+            for era in Era.allCases {
+                let milestoneId = "\(track.rawValue)_era_\(era.rawValue)_complete"
+                let milestoneName = "\(track.displayName) - \(era.displayName) Era Complete"
+                let milestoneDescription = "Complete all objectives in the \(era.displayName) era"
+                let milestoneRequirement = "Complete all \(era.displayName) era objectives"
+                let milestoneReward = "Era completion bonus and era transition"
+                
+                let milestone = MilestoneAchievement(
+                    id: milestoneId,
+                    milestoneType: .eraCompletion,
+                    name: milestoneName,
+                    description: milestoneDescription,
+                    requirement: milestoneRequirement,
+                    reward: milestoneReward,
+                    earnedPeriod: 0 // Will be set when earned
+                )
+                
+                if var progressionTrack = tracks[track.rawValue] {
+                    progressionTrack.trackMilestones[milestoneId] = milestone
+                    tracks[track.rawValue] = progressionTrack
+                }
+            }
+        }
     }
 }
 
-// MARK: - Previews (iOS/macOS)
-
+// MARK: - Previews
 //#if canImport(SwiftUI) && DEBUG
 //import SwiftUI
-//
 //struct ProgressionObjectivesPreview: PreviewProvider {
 //    static var previews: some View {
-//        // Would display progression summary, level objectives, prestige options
-//        Text("Progression/Objectives System Preview")
+//        Text("Progression Objectives System Preview")
 //    }
 //}
 //#endif

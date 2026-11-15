@@ -50,7 +50,7 @@ jobs:
           UDID="${{ steps.sim.outputs.udid }}"
           xcrun simctl install "$UDID" \
             Apps/HarvestHollow/build/Build/Products/Debug-iphonesimulator/HarvestHollow.app
-          for tab in farm barn market house quests town; do
+          for tab in farm barn market house quests town arcade world; do
             xcrun simctl terminate "$UDID" com.harvesthollow.game || true
             SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
             SIMCTL_CHILD_HARVEST_HOLLOW_START_TAB="$tab" \

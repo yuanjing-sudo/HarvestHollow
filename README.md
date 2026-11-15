@@ -10,8 +10,11 @@ crops, raise pixel-art animals, sell at a living market, decorate the farmhouse,
 a ten-chapter story, and level up a little valley farm. The town expansion adds a
 fishing pond, a cottage kitchen, an achievement journal, a seasonal almanac, a
 collection book, daily gifts, crop mastery, animal affection, a weather forecast, and
-full backward-compatible saves. Every visual is drawn with SwiftUI `Canvas` from
-data-driven coloured squares — no PNG sprite atlases, no web views, and no JavaScript.
+full backward-compatible saves. Two new tabs add a complete side-scrolling 2D arcade
+called **Meadow Dash** and **Hollow 3D**, an orbitable voxel diorama of the whole farm
+with an explicit XYZ axis, camera presets, object picking and 74 sculpted models.
+Every visual is drawn with SwiftUI `Canvas` from data-driven coloured squares — no PNG
+sprite atlases, no web views, no SceneKit, and no JavaScript.
 
 <p align="center">
   <img src="docs/icon.png" width="132" alt="Harvest Hollow app icon: a pixel-art red barn, sun, field and pig" />
@@ -53,6 +56,8 @@ data-driven coloured squares — no PNG sprite atlases, no web views, and no Jav
 | **House** | 14 furniture pieces, drag/arrow placement on a 12×8 room grid, 5 themes, comfort score and up to +25% market bonus |
 | **Quests** | 10-chapter story with automatic objective tracking and rewards, plus a daily order |
 | **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
+| **Meadow Dash** | A 2D auto-runner with 16 levels, 6 biomes, jumping, double jumps, dashing, sliding, hearts, combos, apples, clovers and persistent best scores |
+| **Hollow 3D** | A pure-Swift voxel diorama with XYZ axes, a depth-sorted renderer, orbit/pinch camera, six camera presets, object picking, LOD and 74 generated models |
 | **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs |
 | **Cooking** | 18 recipes, 5 categories, ingredient checking, a pantry, sellable dishes and timed growth/market/fishing buffs |
 | **Achievements** | 30 long-term goals across fields, barn, market, pond, home and story, with individual and claim-all rewards |
@@ -68,6 +73,38 @@ data-driven coloured squares — no PNG sprite atlases, no web views, and no Jav
 Wheat, carrot, tomato, strawberry, sunflower, corn, lavender, pumpkin and moonberry.
 Each crop has its own growth time, yield, seed cost, sale price, unlock level and
 10×10 pixel sprite.
+
+### Meadow Dash
+
+**Meadow Dash** is the interactive 2D page. It is a real automatic runner: the pig
+runs through deterministic handcrafted spawns, jumps and double-jumps over fences,
+dashes through crates and pumpkins, slides under crows and bees, and collects apples,
+golden apples, carrots, clovers, hearts and stars. Sixteen levels span six biomes,
+each with its own palette, weather, obstacles and skyline. Runs end with a score,
+combo, apple count and up to three stars; best scores, stars, unlocks and lifetime
+totals are saved in `ArcadeState`. Successful runs also carry a small, bounded coin
+and XP reward back to the farm.
+
+The whole scene — pig, props, parallax hills, windmill, barn, clouds, flowers and
+weather — is painted with individual coloured rectangles on SwiftUI `Canvas`.
+
+### Hollow 3D
+
+**Hollow 3D** is a complete voxel diorama of the live farm. The core contains a
+pure-Swift perspective renderer with:
+
+- an orbit camera with six presets, pitch clamping and pinch zoom;
+- face culling, painter sorting, depth sorting, lighting and optional face edges;
+- projected grid and red/green/blue XYZ axis lines;
+- tappable object anchors, model bounds and per-object inspection;
+- a face cache and minimum-face-area LOD control for smooth interaction.
+
+The model kit contains **74 models and 219,503 voxels**, generated reproducibly by
+`Tools/generate_voxel_models.py`. The average animal is deliberately detailed: the pig
+alone is built from **2,111 individual voxels**. Buildings, trees, animals, crops,
+props and characters all use the same `VoxelModel` format, and the 3D tab populates
+its diorama directly from the current save: plots, planted crops, pens, residents,
+weather, season and time of day all affect the scene.
 
 ### The pond
 
@@ -145,6 +182,12 @@ HarvestHollow/
 │   │   ├── ActivityCatalog.swift # Fish, recipe, achievement and daily-gift content
 │   │   ├── Catalog.swift      # Crops, animals, furniture, themes, quests, items
 │   │   ├── Engine.swift       # Tick loop, actions, validation, events, progression
+│   │   ├── Arcade.swift       # Meadow Dash levels, physics, scoring and career
+│   │   ├── VoxelGeometry.swift # Vec math, voxel models, faces and builders
+│   │   ├── VoxelRenderer.swift # Orbit camera, culling, lighting, picking and LOD
+│   │   ├── VoxelModelLibrary.swift # Model codec, inspector and face cache
+│   │   ├── VoxelWorld.swift   # Live farm diorama and camera presets
+│   │   ├── Voxel*Models.swift # 74 generated voxel models (220k lines)
 │   │   ├── Market.swift       # Deterministic daily price multipliers
 │   │   ├── Persistence.swift  # JSON save codec, atomic store, export/import
 │   │   └── PixelArt.swift     # 69 data-driven pixel sprites
@@ -161,6 +204,8 @@ HarvestHollow/
 │   │   ├── AlmanacView.swift
 │   │   ├── CollectionView.swift
 │   │   ├── HelpView.swift
+│   │   ├── ArcadeView.swift   # Interactive 2D Meadow Dash page
+│   │   ├── World3DView.swift  # Interactive XYZ voxel farm page
 │   │   ├── WeatherSheet.swift
 │   │   ├── InventorySheet.swift
 │   │   ├── SettingsSheet.swift
@@ -170,9 +215,9 @@ HarvestHollow/
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 62 core simulation tests
+├── Tests/                     # 76 core simulation and voxel/arcade tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
-├── Tools/                     # Reproducible icon + sprite-sheet generators
+├── Tools/                     # Icon, sprite-sheet and voxel-model generators
 └── docs/
 ```
 
@@ -231,7 +276,7 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 62 tests
+swift test                              # 76 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
 swift run harvesthollow validate        # check all 69 sprite grids
@@ -249,9 +294,10 @@ build and test normally.
 - On launch the game simulates offline time, capped at 8 hours, so crops can finish
   and animals can produce while the app is closed.
 - **Settings → Export code / Import** moves a base64 JSON save between devices.
-- Saves are versioned. Farms created before the town expansion load with sensible
-  defaults for forecast, activities, fishing, cooking, achievements, affection and
-  gift state; the decoder fills missing fields instead of rejecting the save.
+- Saves are versioned. Farms created before the town expansion or Meadow Dash load
+  with sensible defaults for forecast, activities, fishing, cooking, achievements,
+  affection, gifts and arcade career; the decoder fills missing fields instead of
+  rejecting the save.
 
 ## Testing
 
@@ -260,18 +306,21 @@ production, petting and affection, inventory, buying/selling, market multipliers
 plot/pen unlocks, furniture placement, themes, quests, level-ups, offline catch-up,
 fishing and bait, rod upgrades, cooking and buffs, daily gifts and streaks,
 achievements, crop mastery, weather forecasting, collection counts, save round-trips,
-legacy-save migration, import/export and sprite integrity.
+legacy-save migration, import/export, sprite integrity, voxel geometry and rendering,
+model-library integrity, Meadow Dash physics and progression, and save migration for
+the arcade career.
 
 ```bash
 swift test
-# Executed 62 tests, with 0 failures
+# Executed 76 tests, with 0 failures
 ```
 
 ## Regenerating art assets
 
 ```bash
-python3 Tools/make_icon.py          # docs/icon.png → app icon set
-python3 Tools/make_sprite_sheet.py  # docs/sprites.png from PixelArt.swift
+python3 Tools/make_icon.py             # docs/icon.png → app icon set
+python3 Tools/make_sprite_sheet.py     # docs/sprites.png from PixelArt.swift
+python3 Tools/generate_voxel_models.py # Sources/HarvestHollowCore/Voxel*Models.swift
 ```
 
 Both scripts use only the Python standard library.

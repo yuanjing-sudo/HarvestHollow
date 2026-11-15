@@ -124,6 +124,10 @@ public struct RootView: View {
             TownView()
         case .quests:
             QuestsView()
+        case .arcade:
+            ArcadeView()
+        case .world:
+            World3DView()
         }
     }
 }

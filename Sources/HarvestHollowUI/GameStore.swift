@@ -19,6 +19,8 @@ public enum AppTab: String, CaseIterable, Identifiable {
     case house
     case town
     case quests
+    case arcade
+    case world
 
     public var id: String { rawValue }
 
@@ -30,6 +32,8 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .house: return "House"
         case .town: return "Town"
         case .quests: return "Quests"
+        case .arcade: return "Meadow Dash"
+        case .world: return "Hollow 3D"
         }
     }
 
@@ -41,6 +45,8 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .house: return "sofa.fill"
         case .town: return "building.columns.fill"
         case .quests: return "checklist"
+        case .arcade: return "figure.run"
+        case .world: return "cube.fill"
         }
     }
 
@@ -49,6 +55,8 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .market: return "Shop"
         case .quests: return "Quests"
         case .town: return "Town"
+        case .arcade: return "Play"
+        case .world: return "3D"
         default: return title
         }
     }
@@ -326,6 +334,15 @@ public final class GameStore: ObservableObject {
                     icon: "star.fill",
                     tint: HHTheme.goldDeep
                 )
+
+            case .meadowRunCompleted(let level, let score, let stars, let coins, let xp):
+                enqueueToast(
+                    title: "Meadow \(level) · \(stars)★",
+                    detail: "\(score) pts · +\(coins) coins · +\(xp) XP",
+                    icon: "figure.run",
+                    tint: HHTheme.forest
+                )
+                playFeedback(strong: stars >= 2)
 
             case .dayAdvanced(let day, let weather):
                 enqueueToast(
@@ -778,6 +795,17 @@ public final class GameStore: ObservableObject {
 
     public func buyPen(_ penID: Int) {
         perform(engine.buyPen(penID), announceSuccess: true)
+    }
+
+    // MARK: Arcade
+
+    @discardableResult
+    public func recordMeadowRun(_ result: MeadowRunResult) -> (coins: Int, xp: Int) {
+        let rewards = engine.recordMeadowRun(result)
+        state = engine.state
+        handle(engine.drainEvents())
+        saveNow()
+        return rewards
     }
 
     public func pet(penID: Int) {

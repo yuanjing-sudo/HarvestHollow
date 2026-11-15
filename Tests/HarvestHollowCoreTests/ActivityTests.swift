@@ -42,7 +42,7 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(state.activities.weatherHistory, [state.weather])
         XCTAssertEqual(state.activities.fishing.rodLevel, 1)
         XCTAssertEqual(state.activities.claimedAchievements.count, 0)
-        XCTAssertEqual(GameConstants.saveVersion, 2)
+        XCTAssertEqual(GameConstants.saveVersion, 3)
         XCTAssertFalse(state.season.title.isEmpty)
     }
 

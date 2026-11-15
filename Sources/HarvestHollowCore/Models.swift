@@ -7,7 +7,7 @@ public enum GameConstants {
     public static let dayLength: Double = 240
     /// Progress is simulated for at most eight hours while the game is closed.
     public static let maxOfflineSeconds: Double = 8 * 60 * 60
-    public static let saveVersion = 2
+    public static let saveVersion = 3
 
     public static let farmPlotCount = 24
     public static let startingPlots = 6
@@ -99,6 +99,7 @@ public struct GameState: Codable, Sendable {
     public var settings: GameSettings
     public var flags: GameFlags
     public var activities: ActivityState
+    public var arcade: ArcadeState
 
     public static func newGame(
         now: Date = Date(),
@@ -140,7 +141,8 @@ public struct GameState: Codable, Sendable {
             rngState: rng.state,
             settings: GameSettings(),
             flags: GameFlags(),
-            activities: ActivityState()
+            activities: ActivityState(),
+            arcade: ArcadeState()
         )
 
         state.weather = Weather.roll(using: &rng)
@@ -208,6 +210,7 @@ extension GameState {
         case settings
         case flags
         case activities
+        case arcade
     }
 
     /// Version-tolerant decoding lets farms saved before the town expansion keep
@@ -240,6 +243,7 @@ extension GameState {
         flags = try container.decodeIfPresent(GameFlags.self, forKey: .flags) ?? GameFlags()
         activities = try container.decodeIfPresent(ActivityState.self, forKey: .activities)
             ?? ActivityState(weather: weather)
+        arcade = try container.decodeIfPresent(ArcadeState.self, forKey: .arcade) ?? ArcadeState()
         version = GameConstants.saveVersion
     }
 
@@ -268,6 +272,7 @@ extension GameState {
         try container.encode(settings, forKey: .settings)
         try container.encode(flags, forKey: .flags)
         try container.encode(activities, forKey: .activities)
+        try container.encode(arcade, forKey: .arcade)
     }
 }
 
@@ -564,6 +569,7 @@ public enum GameEvent: Equatable, Sendable {
     case mealEnjoyed(dishID: String, buffName: String, percent: Int, seconds: Int)
     case petAnimal(name: String, affection: Double)
     case masteryUp(cropID: String, level: Int)
+    case meadowRunCompleted(level: Int, score: Int, stars: Int, coins: Int, xp: Int)
     case message(String)
 }
 

@@ -887,6 +887,31 @@ public final class GameEngine {
             && otherY < y + height
     }
 
+    // MARK: - Meadow Dash
+
+    /// Records one completed arcade run and folds a modest, bounded reward
+    /// back into the farm. The arcade is a real part of the save, not a
+    /// detached demo, but it can never replace the farming loop's economy.
+    @discardableResult
+    public func recordMeadowRun(_ result: MeadowRunResult) -> (coins: Int, xp: Int) {
+        state.arcade.register(result, day: state.day)
+        let baseCoins = result.success ? 18 + result.stars * 14 : 4
+        let coinReward = min(120, max(2, baseCoins + result.apples))
+        let xpReward = min(80, max(1, result.apples + result.stars * 6 + (result.success ? 8 : 0)))
+        state.coins += coinReward
+        awardXP(xpReward)
+        emit(
+            .meadowRunCompleted(
+                level: result.levelIndex,
+                score: result.score,
+                stars: result.stars,
+                coins: coinReward,
+                xp: xpReward
+            )
+        )
+        return (coinReward, xpReward)
+    }
+
     // MARK: - Quests & progression
 
     private func awardXP(_ amount: Int) {

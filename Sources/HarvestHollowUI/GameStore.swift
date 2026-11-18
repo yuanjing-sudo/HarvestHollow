@@ -193,6 +193,13 @@ public final class GameStore: ObservableObject {
         #endif
 
         bootstrap()
+        #if DEBUG
+        if let rawTime = ProcessInfo.processInfo.environment["HARVEST_HOLLOW_START_TIME"],
+           let fraction = Double(rawTime) {
+            engine.setClock(GameConstants.dayLength * min(0.92, max(0.05, fraction)))
+            state = engine.state
+        }
+        #endif
     }
 
     private static func makeSaveStore() -> SaveStore {

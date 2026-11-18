@@ -77,7 +77,7 @@ public struct World3DView: View {
         // XPC assertion in the simulator. Keep the overview to a readable LOD
         // and only spend the full per-object budget when the camera moves in
         // close enough to inspect individual voxels.
-        resolved.maximumFaces = 9_000
+        resolved.maximumFaces = 9_600
         resolved.gridExtent = 44
         resolved.gridStep = 4
         resolved.minimumFaceArea = isInteracting ? 1.4 : 0.4

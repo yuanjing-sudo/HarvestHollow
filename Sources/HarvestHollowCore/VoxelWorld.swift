@@ -36,7 +36,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var target: Vec3 {
         switch self {
-        case .overview: return Vec3(0, 1.3, 2)
+        case .overview: return Vec3(4.0, 1.0, 7.0)
         case .barn: return Vec3(-6, 2.3, -6)
         case .animals: return Vec3(9, 1.5, 4)
         case .fields: return Vec3(-7, 1.2, 11)
@@ -58,7 +58,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var pitch: Double {
         switch self {
-        case .overview: return 0.52
+        case .overview: return 0.55
         case .barn: return 0.28
         case .animals: return 0.34
         case .fields: return 0.3
@@ -231,9 +231,34 @@ public enum VoxelWorldBuilder {
         )
     }
 
+    /// Four large grass quadrants give the diorama a real ground plane while
+    /// staying inside the per-object face budget.
+    private static let groundModel: VoxelModel = makeGroundModel()
+
+    private static func makeGroundModel() -> VoxelModel {
+        var voxels: [Voxel] = []
+        let palette = ["7FAE62", "7CAA60", "82B266", "79A75D"]
+        for x in 0..<10 {
+            for z in 0..<10 {
+                let shade = palette[(x * 3 + z * 5) % palette.count]
+                voxels.append(Voxel(x: x, y: 0, z: z, hex: shade, material: .leaf))
+            }
+        }
+        return VoxelModel(
+            id: "nature.ground",
+            name: "Farm lawn",
+            category: .nature,
+            voxels: voxels,
+            notes: "A patchwork grass plane for the Hollow diorama."
+        )
+    }
+
     public static func build(state: GameState) -> VoxelFarmWorld {
         var objects: [VoxelSceneObject] = []
-        let localModels = ["nature.pondwater": pondWaterModel]
+        let localModels = [
+            "nature.pondwater": pondWaterModel,
+            "nature.ground": groundModel
+        ]
         var residentCount = 0
         var cropCount = 0
         var landmarkCount = 0
@@ -249,6 +274,7 @@ public enum VoxelWorldBuilder {
             label: String,
             detail: String = "",
             kind: VoxelObjectKind = .prop,
+            selectable: Bool = true,
             accent: String = "4F8A5A"
         ) {
             guard VoxelModelLibrary.model(modelID) != nil || localModels[modelID] != nil else { return }
@@ -262,8 +288,24 @@ public enum VoxelWorldBuilder {
                     label: label,
                     detail: detail,
                     kind: kind,
+                    selectable: selectable,
                     accent: VoxelColor(hex: accent)
                 )
+            )
+        }
+
+        // Ground plane quadrants (not selectable, so taps still reach objects)
+        for (sx, sz) in [(-10.8, -10.8), (10.8, -10.8), (-10.8, 10.8), (10.8, 10.8)] {
+            add(
+                "ground.\(sx < 0 ? "w" : "e")\(sz < 0 ? "n" : "s")",
+                "nature.ground",
+                x: sx, y: -2.4, z: sz,
+                scale: 2.4,
+                label: "Farm lawn",
+                detail: "The grass carpet under the whole Hollow.",
+                kind: .nature,
+                selectable: false,
+                accent: "7FAE62"
             )
         }
 
@@ -363,7 +405,7 @@ public enum VoxelWorldBuilder {
         add(
             "nature.oak",
             "nature.oak",
-            x: -22.5, y: 0, z: 13.8,
+            x: -16.5, y: 0, z: 12.2,
             rotation: 0.2,
             scale: 0.11,
             label: "The Old Oak",
@@ -374,7 +416,7 @@ public enum VoxelWorldBuilder {
         add(
             "nature.appletree",
             "nature.appletree",
-            x: 22.8, y: 0, z: 9.6,
+            x: 17.2, y: 0, z: 8.8,
             rotation: -0.4,
             scale: 0.11,
             label: "Apple Tree",
@@ -385,7 +427,7 @@ public enum VoxelWorldBuilder {
         add(
             "nature.pine",
             "nature.pine",
-            x: -24.0, y: 0, z: -10.5,
+            x: -17.8, y: 0, z: -9.4,
             rotation: 0.1,
             scale: 0.1,
             label: "North Pine",
@@ -396,7 +438,7 @@ public enum VoxelWorldBuilder {
         add(
             "nature.birch",
             "nature.birch",
-            x: 23.0, y: 0, z: -10.8,
+            x: 18.2, y: 0, z: -9.6,
             rotation: -0.2,
             scale: 0.1,
             label: "Silver Birch",

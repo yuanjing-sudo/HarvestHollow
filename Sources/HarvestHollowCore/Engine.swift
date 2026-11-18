@@ -36,6 +36,12 @@ public final class GameEngine {
         pendingEvents.removeAll()
     }
 
+    /// Sets the in-game clock without advancing the simulation. This is useful
+    /// for screenshot capture and for previews that want a specific light.
+    public func setClock(_ clock: Double) {
+        state.clock = min(GameConstants.dayLength, max(0, clock))
+    }
+
     // MARK: - Time
 
     /// Advances the world to `date`. Called on a timer by the app and once at

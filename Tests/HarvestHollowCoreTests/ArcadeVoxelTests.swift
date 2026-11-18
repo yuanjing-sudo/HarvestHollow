@@ -121,6 +121,7 @@ final class ArcadeVoxelTests: XCTestCase {
         XCTAssertNotNil(world.object("building.barn"))
         XCTAssertNotNil(world.object("nature.pondwater"))
         XCTAssertTrue(world.objects.contains { $0.label == "Willow Pond" })
+        XCTAssertEqual(world.objects.filter { $0.id.hasPrefix("ground.") }.count, 4)
 
         let camera = world.camera(for: .barn)
         let snapshot = world.render(

@@ -53,6 +53,7 @@ jobs:
           for tab in farm barn market house quests town arcade economy world; do
             xcrun simctl terminate "$UDID" com.harvesthollow.game || true
             SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
+            SIMCTL_CHILD_HARVEST_HOLLOW_START_TIME=0.42 \
             SIMCTL_CHILD_HARVEST_HOLLOW_START_TAB="$tab" \
               xcrun simctl launch "$UDID" com.harvesthollow.game
             sleep 7
@@ -62,6 +63,7 @@ jobs:
           for route in fishing kitchen achievements almanac collection help; do
             xcrun simctl terminate "$UDID" com.harvesthollow.game || true
             SIMCTL_CHILD_HARVEST_HOLLOW_SKIP_WELCOME=1 \
+            SIMCTL_CHILD_HARVEST_HOLLOW_START_TIME=0.42 \
             SIMCTL_CHILD_HARVEST_HOLLOW_START_TAB=town \
             SIMCTL_CHILD_HARVEST_HOLLOW_START_TOWN_ROUTE="$route" \
               xcrun simctl launch "$UDID" com.harvesthollow.game

@@ -44,6 +44,16 @@ sprite atlases, no web views, no SceneKit, and no JavaScript.
   <em>Pond, kitchen and almanac: three corners of the town expansion, all drawn with SwiftUI Canvas.</em>
 </p>
 
+<p align="center">
+  <img src="docs/screenshot-arcade.png" width="250" alt="Meadow Dash, the 2D pixel-art auto-runner" />
+  <img src="docs/screenshot-economy.png" width="250" alt="The Valley Ledger and Hollow Exchange economy screens" />
+  <img src="docs/screenshot-world.png" width="250" alt="Hollow 3D, the voxel farm diorama with a daytime lawn" />
+</p>
+
+<p align="center">
+  <em>Three more ways to play: run the Meadow Dash meadows, trade on the Hollow Exchange, or orbit the whole voxel farm.</em>
+</p>
+
 ![Harvest Hollow sprite library](docs/sprites.png)
 
 ## What is in the game?

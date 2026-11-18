@@ -20,6 +20,7 @@ public final class GameEngine {
     ) {
         var normalized = state
         _ = normalized.economy.synchronize(level: normalized.level)
+        normalized.economy.ensureLedgers()
         self.state = normalized
         self.catalog = catalog
         self.clock = clock
@@ -28,7 +29,10 @@ public final class GameEngine {
     /// Swap in a state loaded from an imported save. Pending events belong to
     /// the old farm and are discarded.
     public func replaceState(_ newState: GameState) {
-        state = newState
+        var normalized = newState
+        _ = normalized.economy.synchronize(level: normalized.level)
+        normalized.economy.ensureLedgers()
+        state = normalized
         pendingEvents.removeAll()
     }
 
@@ -185,6 +189,27 @@ public final class GameEngine {
                 title: event.title,
                 detail: event.detail,
                 positive: event.impact >= 0
+            ))
+        }
+        let investmentCash = state.economy.collectInvestmentCash()
+        if investmentCash >= 0.5 {
+            state.coins += Int(investmentCash.rounded())
+            emit(.message("Hollow Exchange paid \(Int(investmentCash.rounded())) coins in dividends or liquidation proceeds."))
+        }
+        if let notice = report.marketNotice {
+            emit(.economyEvent(
+                day: report.day,
+                title: "Margin call",
+                detail: notice,
+                positive: false
+            ))
+        }
+        if let incident = report.crimeIncident {
+            emit(.economyEvent(
+                day: incident.day,
+                title: incident.title,
+                detail: incident.detail,
+                positive: false
             ))
         }
     }
@@ -1064,6 +1089,85 @@ public final class GameEngine {
         state.coins -= Int(paid.rounded())
         emit(.message("Repaid \(Int(paid.rounded())) coins of valley debt."))
         return true
+    }
+
+    // MARK: - Hollow Exchange
+
+    /// Buys shares in a valley business. `leverage` above 1 borrows the rest
+    /// from the exchange, so a fall in the share price can trigger a margin
+    /// call and a real loss of the player's coins.
+    @discardableResult
+    public func buyBusinessShares(
+        businessID: UUID,
+        shares: Double,
+        leverage: Double
+    ) -> InvestmentExecution {
+        let execution = state.economy.buyShares(
+            businessID: businessID,
+            shares: shares,
+            leverage: leverage,
+            availableCoins: state.coins
+        )
+        if execution.success {
+            state.coins = max(0, state.coins + Int(execution.cashDelta.rounded()))
+        }
+        emit(.message(execution.message))
+        return execution
+    }
+
+    @discardableResult
+    public func sellBusinessShares(
+        businessID: UUID,
+        shares: Double
+    ) -> InvestmentExecution {
+        let execution = state.economy.sellShares(
+            businessID: businessID,
+            shares: shares
+        )
+        if execution.success {
+            state.coins = max(0, state.coins + Int(execution.cashDelta.rounded()))
+        }
+        emit(.message(execution.message))
+        return execution
+    }
+
+    /// Funds a forensic audit. Audits unlock at level 8. A clean audit lowers
+    /// perceived fraud risk; a dirty one recovers a bounty and creates a case.
+    @discardableResult
+    public func auditBusiness(id: UUID, cost: Double = 40) -> BusinessAuditResult {
+        guard state.economy.investmentAuditUnlocked else {
+            let result = BusinessAuditResult(
+                success: false,
+                cost: 0,
+                discoveredFraud: false,
+                recovered: 0,
+                message: "Forensic audits unlock at level 8."
+            )
+            emit(.message(result.message))
+            return result
+        }
+        guard state.coins >= Int(cost) else {
+            let result = BusinessAuditResult(
+                success: false,
+                cost: 0,
+                discoveredFraud: false,
+                recovered: 0,
+                message: "You need \(Int(cost)) coins to fund a forensic audit."
+            )
+            emit(.message(result.message))
+            return result
+        }
+        let result = withRNG { rng in
+            state.economy.auditBusiness(id: id, cost: cost, rng: &rng)
+        }
+        if result.success {
+            state.coins -= Int(cost)
+            if result.recovered > 0 {
+                state.coins += Int(result.recovered.rounded())
+            }
+        }
+        emit(.message(result.message))
+        return result
     }
 
     // MARK: - Settings & reset

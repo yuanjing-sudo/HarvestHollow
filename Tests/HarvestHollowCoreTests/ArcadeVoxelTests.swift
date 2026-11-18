@@ -119,6 +119,8 @@ final class ArcadeVoxelTests: XCTestCase {
         XCTAssertTrue(world.objects.contains { $0.kind == .crop })
         XCTAssertTrue(world.objects.contains { $0.kind == .nature })
         XCTAssertNotNil(world.object("building.barn"))
+        XCTAssertNotNil(world.object("nature.pondwater"))
+        XCTAssertTrue(world.objects.contains { $0.label == "Willow Pond" })
 
         let camera = world.camera(for: .barn)
         let snapshot = world.render(

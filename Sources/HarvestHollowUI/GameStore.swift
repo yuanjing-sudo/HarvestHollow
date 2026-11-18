@@ -864,6 +864,58 @@ public final class GameStore: ObservableObject {
     }
 
     @discardableResult
+    public func buyBusinessShares(
+        businessID: UUID,
+        shares: Double,
+        leverage: Double
+    ) -> InvestmentExecution {
+        finishInvestmentAction(
+            engine.buyBusinessShares(
+                businessID: businessID,
+                shares: shares,
+                leverage: leverage
+            )
+        )
+    }
+
+    @discardableResult
+    public func sellBusinessShares(
+        businessID: UUID,
+        shares: Double
+    ) -> InvestmentExecution {
+        finishInvestmentAction(
+            engine.sellBusinessShares(businessID: businessID, shares: shares)
+        )
+    }
+
+    @discardableResult
+    public func auditBusiness(id: UUID) -> BusinessAuditResult {
+        finishAuditAction(engine.auditBusiness(id: id))
+    }
+
+    @discardableResult
+    private func finishInvestmentAction(_ execution: InvestmentExecution) -> InvestmentExecution {
+        state = engine.state
+        handle(engine.drainEvents())
+        if execution.success {
+            saveNow()
+            playFeedback()
+        }
+        return execution
+    }
+
+    @discardableResult
+    private func finishAuditAction(_ result: BusinessAuditResult) -> BusinessAuditResult {
+        state = engine.state
+        handle(engine.drainEvents())
+        if result.success {
+            saveNow()
+            playFeedback()
+        }
+        return result
+    }
+
+    @discardableResult
     private func finishEconomyAction(_ success: Bool) -> Bool {
         state = engine.state
         handle(engine.drainEvents())

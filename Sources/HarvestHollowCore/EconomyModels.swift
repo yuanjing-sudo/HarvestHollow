@@ -879,6 +879,8 @@ public struct EconomyReport: Codable, Equatable, Sendable {
     public var supply: Double
     public var priceIndex: Double
     public var governmentBalance: Double
+    public var marketNotice: String? = nil
+    public var crimeIncident: CrimeIncident? = nil
 
     public var tierChanged: Bool { previousTier != tier }
 }

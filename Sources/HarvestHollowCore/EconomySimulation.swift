@@ -398,6 +398,14 @@ extension ValleyEconomy {
             0, 0.8
         )
 
+        ensureLedgers()
+        let forcedBefore = market?.forcedLiquidations ?? 0
+        advanceMarket(inputs: inputs, rng: &rng)
+        let todaysIncident = advanceJustice(rng: &rng)
+        let marketNotice = (market?.forcedLiquidations ?? 0) > forcedBefore
+            ? market?.lastNotice
+            : nil
+
         let gdpNow = gdp
         governmentBalance = gdpNow * (taxRate - publicSpending - subsidyRate)
             + tariffRate * imports * 0.6
@@ -420,6 +428,7 @@ extension ValleyEconomy {
         var todaysEvent = tickElection(rng: &rng)
         netWorth = Double(inputs.coins)
             + gdp * 0.02
+            + investmentMarket.equity
             + aiBusinesses.reduce(0) { $0 + $1.capital } * 0.5
             + aiCitizens.reduce(0) { $0 + $1.savings } * 0.25
         for index in loans.indices {
@@ -430,6 +439,8 @@ extension ValleyEconomy {
         if governmentBalance > 0 { creditDelta += 1 }
         if unemployment > 0.15 { creditDelta -= 1 }
         if loanTotal > Double(inputs.coins) * 0.6 { creditDelta -= 1 }
+        if investmentMarket.leverage > 2.2 { creditDelta -= 1 }
+        if investmentMarket.equity < 0 { creditDelta -= 1 }
         if pollution < 0.25 { creditDelta += 1 }
         creditScore = Int(hhClamp(
             Double(creditScore + creditDelta),
@@ -530,6 +541,9 @@ extension ValleyEconomy {
         if bankruptcyRisk > 0.5 { warnings.append("Household debt risk is elevated.") }
         if happiness < 0.35 { warnings.append("Residents are unhappy; migration may follow.") }
         if crime > 0.3 { warnings.append("Crime is eroding confidence.") }
+        if investmentMarket.marginDebt > 0, investmentMarket.leverage > 2.2 {
+            warnings.append("Margin debt is high; a share-price fall can force a sale.")
+        }
 
         let summary = "GDP \(Int(gdp))c · prices \(String(format: "%.2f", priceIndex)) · \(Int((unemployment * 100).rounded()))% idle · \(Int(population)) residents"
         let report = EconomyReport(
@@ -545,7 +559,9 @@ extension ValleyEconomy {
             demand: demand,
             supply: supply,
             priceIndex: priceIndex,
-            governmentBalance: governmentBalance
+            governmentBalance: governmentBalance,
+            marketNotice: marketNotice,
+            crimeIncident: todaysIncident
         )
         lastReport = report
         history.append(snapshot())

@@ -10,6 +10,7 @@ import HarvestHollowCore
 public struct EconomyView: View {
     @EnvironmentObject private var store: GameStore
     @State private var selectedFactor: EconomyFactor?
+    @State private var selectedBusiness: BusinessListing?
     @State private var showGuide = false
 
     public init() {}
@@ -22,6 +23,8 @@ public struct EconomyView: View {
                 header
                 pulseGrid
                 dailyReportCard
+                LedgerExchangeSection(onSelect: { selectedBusiness = $0 })
+                LedgerJusticeSection(onInspect: { selectedBusiness = $0 })
                 unlockBanner
                 if let report = economy.lastReport, !report.warnings.isEmpty {
                     warningCard(report)
@@ -49,6 +52,11 @@ public struct EconomyView: View {
         .sheet(isPresented: $showGuide) {
             EconomyGuideView()
                 .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $selectedBusiness) { listing in
+            BusinessDetailView(businessID: listing.businessID)
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
     }
@@ -130,6 +138,33 @@ public struct EconomyView: View {
                         value: "\(Int((economy.happiness * 100).rounded()))%",
                         icon: "face.smiling.fill",
                         tint: economy.happiness < 0.4 ? HHTheme.terracotta : HHTheme.leaf
+                    )
+                }
+
+                HStack(spacing: 8) {
+                    LedgerMetric(
+                        title: "HVI",
+                        value: String(format: "%.1f", economy.investmentMarket.marketIndex),
+                        icon: "chart.line.uptrend.xyaxis",
+                        tint: HHTheme.goldDeep
+                    )
+                    LedgerMetric(
+                        title: "PORTFOLIO",
+                        value: "\(Int(economy.investmentMarket.equity.rounded()))c",
+                        icon: "briefcase.fill",
+                        tint: economy.investmentMarket.unrealizedProfit >= 0 ? HHTheme.forest : HHTheme.terracotta
+                    )
+                    LedgerMetric(
+                        title: "P&L",
+                        value: "\(economy.investmentMarket.unrealizedProfit >= 0 ? "+" : "")\(Int(economy.investmentMarket.unrealizedProfit.rounded()))c",
+                        icon: economy.investmentMarket.unrealizedProfit >= 0 ? "arrow.up.right" : "arrow.down.right",
+                        tint: economy.investmentMarket.unrealizedProfit >= 0 ? HHTheme.forest : HHTheme.terracotta
+                    )
+                    LedgerMetric(
+                        title: "CRIME",
+                        value: "\(Int((economy.crime * 100).rounded()))%",
+                        icon: "shield.lefthalf.filled",
+                        tint: economy.crime > 0.3 ? HHTheme.terracotta : HHTheme.forest
                     )
                 }
 
@@ -664,7 +699,17 @@ extension EconomyView {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(economy.aiBusinesses) { firm in
-                                LedgerFirmTile(firm: firm)
+                                Button {
+                                    if let listing = economy.investmentMarket.listing(for: firm.id) {
+                                        selectedBusiness = listing
+                                    }
+                                } label: {
+                                    LedgerFirmTile(
+                                        firm: firm,
+                                        listing: economy.investmentMarket.listing(for: firm.id)
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }

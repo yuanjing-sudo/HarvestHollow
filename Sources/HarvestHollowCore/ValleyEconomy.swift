@@ -88,6 +88,11 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
     public var lastReport: EconomyReport?
     public var lastPolicyDay: Int
 
+    // Markets and justice are optional for backward-compatible decoding of
+    // saves created before the Hollow Exchange opened.
+    public var market: InvestmentMarket?
+    public var justice: JusticeLedger?
+
     public init(level: Int = 1) {
         tier = EconomyTier.forLevel(level)
         lastKnownLevel = level
@@ -166,6 +171,8 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
         lastPolicyDay = 0
 
         history = [snapshot()]
+        market = InvestmentMarket.seed(businesses: aiBusinesses, day: day)
+        justice = JusticeLedger()
     }
 
     public static func seedBusinesses(level: Int) -> [AIBusiness] {
@@ -285,9 +292,13 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
         let oldLevel = lastKnownLevel
         lastKnownLevel = max(1, level)
         tier = EconomyTier.forLevel(lastKnownLevel)
-        return EconomyFactor.allCases.filter {
+        let unlocked = EconomyFactor.allCases.filter {
             $0.minimumLevel > oldLevel && $0.minimumLevel <= lastKnownLevel
         }
+        if market != nil {
+            ensureInvestmentMarket()
+        }
+        return unlocked
     }
 
     public func snapshot() -> EconomySnapshot {

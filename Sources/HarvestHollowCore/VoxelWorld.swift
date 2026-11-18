@@ -36,7 +36,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var target: Vec3 {
         switch self {
-        case .overview: return Vec3(0, 1.0, 2)
+        case .overview: return Vec3(0, 1.3, 2)
         case .barn: return Vec3(-6, 2.3, -6)
         case .animals: return Vec3(9, 1.5, 4)
         case .fields: return Vec3(-7, 1.2, 11)
@@ -58,7 +58,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var pitch: Double {
         switch self {
-        case .overview: return 0.62
+        case .overview: return 0.52
         case .barn: return 0.28
         case .animals: return 0.34
         case .fields: return 0.3
@@ -69,7 +69,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var distance: Double {
         switch self {
-        case .overview: return 56
+        case .overview: return 34
         case .barn: return 14
         case .animals: return 16
         case .fields: return 17
@@ -80,7 +80,7 @@ public enum VoxelCameraPreset: String, CaseIterable, Sendable, Identifiable {
 
     public var fieldOfView: Double {
         switch self {
-        case .overview: return 1.2
+        case .overview: return 1.05
         case .animals, .fields: return 1.0
         case .barn, .house, .pond: return 0.95
         }
@@ -188,8 +188,52 @@ public struct VoxelFarmWorld: Sendable {
 // MARK: - Builder
 
 public enum VoxelWorldBuilder {
+    /// A shallow pond is built in code so the fishing spot is visible in the
+    /// 3D farm without adding a PNG or a heavyweight mesh.
+    private static let pondWaterModel: VoxelModel = makePondWaterModel()
+
+    private static func makePondWaterModel() -> VoxelModel {
+        var voxels: [Voxel] = []
+        let width = 34
+        let depth = 22
+        for x in 0..<width {
+            for z in 0..<depth {
+                let dx = Double(x) - 17
+                let dz = Double(z) - 11
+                let ellipse = (dx * dx) / (17 * 17) + (dz * dz) / (11 * 11)
+                if ellipse > 1 { continue }
+                if ellipse > 0.80 {
+                    voxels.append(Voxel(x: x, y: 0, z: z, hex: "8F8C82", material: .stone))
+                    if (x + z) % 4 == 0 {
+                        voxels.append(Voxel(x: x, y: 1, z: z, hex: "A8A394", material: .stone))
+                    }
+                } else {
+                    let shade = (x / 3 + z / 4) % 2 == 0 ? "4F8AAE" : "5C9BC0"
+                    voxels.append(Voxel(x: x, y: 0, z: z, hex: shade, material: .water))
+                }
+            }
+        }
+        for center in [(10, 8), (23, 6), (15, 15), (26, 14)] {
+            for dx in -1...1 {
+                for dz in -1...1 where abs(dx) + abs(dz) <= 1 {
+                    voxels.append(
+                        Voxel(x: center.0 + dx, y: 1, z: center.1 + dz, hex: "5A9B69", material: .leaf)
+                    )
+                }
+            }
+        }
+        return VoxelModel(
+            id: "nature.pondwater",
+            name: "Willow Pond",
+            category: .nature,
+            voxels: voxels,
+            notes: "Shallow water, stone edge and lily pads for the Hollow fishing pond."
+        )
+    }
+
     public static func build(state: GameState) -> VoxelFarmWorld {
         var objects: [VoxelSceneObject] = []
+        let localModels = ["nature.pondwater": pondWaterModel]
         var residentCount = 0
         var cropCount = 0
         var landmarkCount = 0
@@ -207,7 +251,7 @@ public enum VoxelWorldBuilder {
             kind: VoxelObjectKind = .prop,
             accent: String = "4F8A5A"
         ) {
-            guard VoxelModelLibrary.model(modelID) != nil else { return }
+            guard VoxelModelLibrary.model(modelID) != nil || localModels[modelID] != nil else { return }
             objects.append(
                 VoxelSceneObject(
                     id: id,
@@ -394,12 +438,23 @@ public enum VoxelWorldBuilder {
             accent: "8F8C82"
         )
         add(
+            "nature.pondwater",
+            "nature.pondwater",
+            x: 12.2, y: 0, z: 14.9,
+            rotation: 0,
+            scale: 0.13,
+            label: "Willow Pond",
+            detail: "The Hollow fishing pond: shallow water, a stone edge, and lily pads. Tap Visit pond to cast a line.",
+            kind: .nature,
+            accent: "4F8AAE"
+        )
+        add(
             "nature.lilypad",
             "nature.lilypad",
             x: 13.8, y: 0, z: 15.4,
             rotation: 0.2,
             scale: 0.12,
-            label: "Willow Pond",
+            label: "Lily Pads",
             detail: "Lily pads, reeds and a frog who is not currently visible.",
             kind: .nature,
             accent: "4F8A5A"
@@ -647,7 +702,7 @@ public enum VoxelWorldBuilder {
         let modelIDs = Set(objects.map(\.modelID))
         var models: [String: VoxelModel] = [:]
         for id in modelIDs {
-            if let model = VoxelModelLibrary.model(id) {
+            if let model = VoxelModelLibrary.model(id) ?? localModels[id] {
                 models[id] = model
             }
         }

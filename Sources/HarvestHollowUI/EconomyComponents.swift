@@ -302,6 +302,12 @@ struct LedgerInvestmentTile: View {
 
 struct LedgerFirmTile: View {
     let firm: AIBusiness
+    let listing: BusinessListing?
+
+    init(firm: AIBusiness, listing: BusinessListing? = nil) {
+        self.firm = firm
+        self.listing = listing
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -317,6 +323,20 @@ struct LedgerFirmTile: View {
             Text("\(firm.kind.title) · \(firm.employees) staff")
                 .font(.system(size: 8, weight: .semibold, design: .rounded))
                 .foregroundStyle(HHTheme.muted)
+            if let listing {
+                HStack(spacing: 4) {
+                    Text("\(String(format: "%.2f", listing.sharePrice))c")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .foregroundStyle(HHTheme.ink)
+                    Text("\(listing.dailyChangePercent >= 0 ? "+" : "")\(Int((listing.dailyChangePercent * 100).rounded()))%")
+                        .font(.system(size: 8, weight: .black, design: .rounded))
+                        .foregroundStyle(listing.dailyChangePercent >= 0 ? HHTheme.forest : HHTheme.terracotta)
+                }
+                Text("Profit \(Int(listing.fundamentals.profit))c · risk \(Int((listing.fundamentals.fraudRisk * 100).rounded()))%")
+                    .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(listing.fundamentals.fraudRisk > 0.3 ? HHTheme.terracotta : HHTheme.muted)
+                    .lineLimit(1)
+            }
             HStack(spacing: 4) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
@@ -333,7 +353,7 @@ struct LedgerFirmTile: View {
             }
         }
         .padding(8)
-        .frame(width: 132, alignment: .leading)
+        .frame(width: 154, alignment: .leading)
         .background(HHTheme.paper.opacity(0.92), in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -550,6 +570,16 @@ struct EconomyGuideView: View {
                 }
 
                 Text("Each morning the simulation runs one linked circuit: weather and soil set yields; yields, imports, and firm output set supply; supply and household demand set prices; prices feed wages, confidence, interest, and policy; policy changes public services, taxes, health, education, and the next day's soil. Nothing is a standalone slider.")
+                    .font(.hhBody(13))
+                    .foregroundStyle(HHTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("The Hollow Exchange opens a second circuit. Firm profit, debt, growth, reputation, and fraud risk set a fair share price; today's price also carries sentiment and random noise. Buying with margin borrows from the exchange, so interest accrues and a 25% equity buffer can force a sale. Watch the books, not just the sparkline.")
+                    .font(.hhBody(13))
+                    .foregroundStyle(HHTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Crime is not a cosmetic number. Theft, fraud, embezzlement, tax evasion, bribery, smuggling, arson, and price-fixing create cases, damage firm capital, lower share prices, and can be prosecuted. At level 8 you can fund a forensic audit and recover a bounty from a crooked firm.")
                     .font(.hhBody(13))
                     .foregroundStyle(HHTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)

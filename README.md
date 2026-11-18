@@ -59,8 +59,10 @@ sprite atlases, no web views, no SceneKit, and no JavaScript.
 | **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
 | **Meadow Dash** | A 2D auto-runner with 16 levels, 6 biomes, jumping, double jumps, dashing, sliding, hearts, combos, apples, clovers and persistent best scores |
 | **Valley Ledger** | A 30-factor linked economy: soil, weather, yields, livestock, labour, population, demand, prices, inflation, credit, policy, taxes, trade, wellbeing, pollution, research, AI firms, elections and disasters, all unlocking in six tiers |
-| **Hollow 3D** | A pure-Swift voxel diorama with XYZ axes, a depth-sorted renderer, orbit/pinch camera, six camera presets, object picking, LOD and 74 generated models |
-| **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs |
+| **Hollow Exchange** | Live share prices for every AI firm, sparkline charts, business fundamentals, buy/sell orders, 2x/3x margin, interest, dividends, margin calls and a personal trade blotter |
+| **Crime & justice** | Theft, fraud, embezzlement, tax evasion, bribery, smuggling, arson and price-fixing create court cases, damage firm capital and move share prices; forensic audits unlock at level 8 |
+| **Hollow 3D** | A pure-Swift voxel diorama with XYZ axes, a depth-sorted renderer, orbit/pinch camera, six camera presets, object picking, LOD, 74 generated models and a visible Willow Pond with a Visit pond shortcut |
+| **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs; reachable from Town or the new Farm pond card |
 | **Cooking** | 18 recipes, 5 categories, ingredient checking, a pantry, sellable dishes and timed growth/market/fishing buffs |
 | **Achievements** | 30 long-term goals across fields, barn, market, pond, home and story, with individual and claim-all rewards |
 | **Almanac** | Season calendar, festivals, tomorrow's forecast, seven-day weather history, crop mastery and a daily market board |
@@ -241,6 +243,8 @@ HarvestHollow/
 │   │   ├── ArcadeView.swift   # Interactive 2D Meadow Dash page
 │   │   ├── EconomyView.swift  # Valley Ledger dashboard, policies and credit
 │   │   ├── EconomyComponents.swift # Sparklines, factor tiles, detail and guide
+│   │   ├── InvestmentView.swift # Hollow Exchange, price charts and crime ledger
+│   │   ├── BusinessDetailView.swift # Firm fundamentals, trading and audits
 │   │   ├── World3DView.swift  # Interactive XYZ voxel farm page
 │   │   ├── WeatherSheet.swift
 │   │   ├── InventorySheet.swift
@@ -251,7 +255,7 @@ HarvestHollow/
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 85 core simulation, economy and voxel/arcade tests
+├── Tests/                     # 97 core simulation, economy, market and voxel/arcade tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
 ├── Tools/                     # Icon, sprite-sheet and voxel-model generators
 └── docs/
@@ -312,7 +316,7 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 85 tests
+swift test                              # 97 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
 swift run harvesthollow validate        # check all 69 sprite grids
@@ -343,12 +347,13 @@ plot/pen unlocks, furniture placement, themes, quests, level-ups, offline catch-
 fishing and bait, rod upgrades, cooking and buffs, daily gifts and streaks,
 achievements, crop mastery, weather forecasting, collection counts, save round-trips,
 legacy-save migration, import/export, sprite integrity, voxel geometry and rendering,
-model-library integrity, Meadow Dash physics and progression, and save migration for
-the arcade career.
+model-library integrity, Meadow Dash physics and progression, share-price simulation,
+cash and margin trading, forensic audits, crime generation, and save migration for
+the arcade career and the Hollow Exchange.
 
 ```bash
 swift test
-# Executed 85 tests, with 0 failures
+# Executed 97 tests, with 0 failures
 ```
 
 ## Regenerating art assets

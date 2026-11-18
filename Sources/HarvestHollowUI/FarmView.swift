@@ -43,6 +43,7 @@ public struct FarmView: View {
                 weatherCard
                 seedSatchel
                 quickActions
+                pondCard
                 fieldCard
                 farmingTip
             }
@@ -208,6 +209,66 @@ public struct FarmView: View {
                 tint: HHTheme.forest
             ) {
                 store.plantAll()
+            }
+        }
+    }
+
+    // MARK: Pond shortcut
+
+    private var pondCard: some View {
+        CozyCard(padding: 13) {
+            HStack(spacing: 11) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "7FB7D6"), Color(hex: "4F6D8A")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Image(systemName: "fish.fill")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 42, height: 42)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("Hollow Pond")
+                            .font(.hhHeadline(14))
+                            .foregroundStyle(HHTheme.ink)
+                        Text("FISHING")
+                            .font(.system(size: 7, weight: .black, design: .rounded))
+                            .foregroundStyle(Color(hex: "4F6D8A"))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color(hex: "7FB7D6").opacity(0.18), in: Capsule())
+                    }
+                    Text("\(store.fishingRodName) · \(store.uniqueFishCaught) species · \(store.baitCount) bait")
+                        .font(.hhCaption(10.5))
+                        .foregroundStyle(HHTheme.muted)
+                    Text("A short walk past the field. Cast a line, sell the catch, and fill the pond journal.")
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(HHTheme.muted)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                Button {
+                    store.openTown(.fishing)
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: "figure.fishing")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("Go")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Color(hex: "4F6D8A"), in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
         }
     }

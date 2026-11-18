@@ -162,7 +162,8 @@ public struct HelpView: View {
                     "Rod upgrades unlock new fish and improve rare chances.",
                     "Weather, time of day, and a fishing meal all matter.",
                     "Some fish are legendary. The journal keeps your best weight.",
-                    "A perfect cast is a small random bonus to weight and XP."
+                    "A perfect cast is a small random bonus to weight and XP.",
+                    "The pond sits in Town. A shortcut card on the Farm takes you straight there."
                 ]
             ),
             HelpTopic(
@@ -220,6 +221,10 @@ public struct HelpView: View {
                     "Prices feed wages, confidence, interest, migration, and public policy.",
                     "At level 8 you can set taxes, subsidies, spending, tariffs, and the policy rate.",
                     "Eight investments and credit let you reshape the valley; debt compounds daily.",
+                    "The Hollow Exchange lists every AI firm. Share prices move with profit, debt, growth, reputation, and fraud risk.",
+                    "Buy or sell shares from a firm's books. Margin unlocks at level 4 (2x) and level 8 (3x); interest accrues daily.",
+                    "A margin call forces a sale when equity falls below 25% of the position value.",
+                    "Crime and fraud create court cases, damage firm capital, and move share prices. Fund audits at level 8.",
                     "AI firms hire, invest, pollute, and can fail. Elections change policy biases.",
                     "Every shock is recorded in the ledger and can echo for many days."
                 ]

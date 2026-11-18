@@ -74,12 +74,14 @@ public struct World3DView: View {
         resolved.outlineFaces = outlineFaces
         // SwiftUI's Canvas hands every fill to Metal. A 30k-face overview
         // produced ~60k draw operations (fills plus outlines) and tripped an
-        // XPC assertion in the simulator. Keep the overview to a small,
-        // readable LOD and only spend the full per-object budget when the
-        // camera moves in close enough to inspect individual voxels.
-        resolved.maximumFaces = 7_000
+        // XPC assertion in the simulator. Keep the overview to a readable LOD
+        // and only spend the full per-object budget when the camera moves in
+        // close enough to inspect individual voxels.
+        resolved.maximumFaces = 9_000
+        resolved.gridExtent = 44
+        resolved.gridStep = 4
         resolved.minimumFaceArea = isInteracting ? 1.4 : 0.4
-        resolved.perObjectFaceLimit = camera.distance > 26 ? 100 : 0
+        resolved.perObjectFaceLimit = camera.distance > 26 ? 180 : 0
         return resolved
     }
 
@@ -123,11 +125,13 @@ public struct World3DView: View {
             selectedObjectID = nil
         }
         .task(id: worldSignature) {
+            let signature = worldSignature
             isBuildingWorld = true
             let snapshot = store.state
             let built = await Task.detached(priority: .userInitiated) {
                 VoxelWorldBuilder.build(state: snapshot)
             }.value
+            guard signature == worldSignature else { return }
             cachedWorld = built
             isBuildingWorld = false
         }
@@ -383,6 +387,13 @@ public struct World3DView: View {
                         showDetails = true
                     }
                     .buttonStyle(CozyCompactButtonStyle(tint: Color(hex: "4F7FA8")))
+                    if object.id == "nature.pondwater" || object.label.localizedCaseInsensitiveContains("pond") {
+                        Button("Visit pond") {
+                            selectedObjectID = nil
+                            store.openTown(.fishing)
+                        }
+                        .buttonStyle(CozyCompactButtonStyle(tint: Color(hex: "4F6D8A")))
+                    }
                     Spacer(minLength: 0)
                 }
             }
@@ -630,6 +641,19 @@ private struct WorldSceneCanvas: View {
 // MARK: - Painter
 
 private enum WorldScenePainter {
+    /// Tiny projected voxel faces do not benefit from an outline, and every
+    /// avoided stroke is one less command in the Canvas display list.
+    private static func projectedArea(_ points: [Vec2]) -> Double {
+        guard points.count >= 3 else { return 0 }
+        var twiceArea = 0.0
+        for index in points.indices {
+            let a = points[index]
+            let b = points[(index + 1) % points.count]
+            twiceArea += a.x * b.y - b.x * a.y
+        }
+        return abs(twiceArea) * 0.5
+    }
+
     static func paint(
         snapshot: VoxelSceneSnapshot,
         in context: inout GraphicsContext,
@@ -677,7 +701,7 @@ private enum WorldScenePainter {
             }
             path.closeSubpath()
             context.fill(path, with: .color(face.color.hhColor))
-            if options.outlineFaces {
+            if options.outlineFaces, projectedArea(face.points) > 12 {
                 context.stroke(
                     path,
                     with: .color(face.color.scaled(by: 0.72).hhColor.opacity(0.36)),

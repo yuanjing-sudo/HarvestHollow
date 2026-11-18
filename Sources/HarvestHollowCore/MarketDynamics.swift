@@ -1200,12 +1200,13 @@ public enum MarketFactorModel {
 
     private static var extendedGlobalFactors: [MarketFactorSpec] {
         var specs: [MarketFactorSpec] = []
-        specs.append(MarketFactorSpec(id: "global.geopoliticalRisk", title: "Geopolitical risk", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+        specs.append(MarketFactorSpec(id: "global.foreignCapital", title: "Foreign capital pull", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
             let e = context.economy
-            let risk = hhClamp((1 - e.politicalStability) * 0.6 + e.tariffRate * 0.8 + e.corruption * 0.4, 0, 1)
-            return outcome(pctText(risk), hhClamp(100 - risk * 70, 0, 100), bps(-risk * 14), "Distant quarrels raise insurance on every shipment.")
+            let books = hhClamp(e.netWorth / max(1, e.gdp) / 3, 0, 1)
+            let pull = hhClamp(e.currencyStrength * 0.6 + books * 0.4, 0, 1)
+            return outcome(pctText(pull), pull * 100, bps((pull - 0.5) * 10), "Outside money buys the valley only when its coin and books both look sound.")
         })
-        specs.append(MarketFactorSpec(id: "global.marketLiquidity", title: "Market liquidity", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+        specs.append(MarketFactorSpec(id: "global.marketLiquidity", title: "World liquidity", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
             let liquidity = hhClamp(context.liquidity * 0.8 + context.shortInterest * 0.2, 0, 1)
             return outcome(pctText(liquidity), hhClamp(100 - liquidity * 100, 0, 100), bps((liquidity - 0.5) * 22), "Global liquidity sets the baseline for all pricing.")
         })
@@ -1352,10 +1353,10 @@ public enum MarketFactorModel {
             let e = context.economy
             return outcome(pctText(e.waterAvailability), e.waterAvailability * 100, bps((e.waterAvailability - 0.5) * 16), "Irrigation decides whether a dry spell is a headline or a crisis.")
         })
-        specs.append(MarketFactorSpec(id: "supply.soilHealth", title: "Soil health", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
+        specs.append(MarketFactorSpec(id: "supply.soilHealth", title: "Soil degradation", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
             let e = context.economy
-            let health = hhClamp(e.soilFertility - e.soilDegradation, 0, 1)
-            return outcome(pctText(health), health * 100, bps((health - 0.6) * 22), "Degraded soil is a slow tax on every future harvest.")
+            let damage = hhClamp(e.soilDegradation, 0, 1)
+            return outcome(pctText(damage), (1 - damage) * 100, bps(-damage * 12), "Erosion is a slow tax on every future harvest.")
         })
         specs.append(MarketFactorSpec(id: "supply.energyMix", title: "Renewable energy share", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
             let e = context.economy
@@ -1448,7 +1449,7 @@ public enum MarketFactorModel {
             let e = context.economy
             return outcome(pctText(e.bankruptcyRisk), hhClamp(100 - e.bankruptcyRisk * 130, 0, 100), bps(-e.bankruptcyRisk * 15), "A neighbour's failure frees its customers and scares its lenders.")
         })
-        specs.append(MarketFactorSpec(id: "peers.marketConcentration", title: "Market concentration", group: .peers) { (context: MarketFactorContext) -> MarketFactorOutcome in
+        specs.append(MarketFactorSpec(id: "peers.marketConcentration", title: "Listing depth", group: .peers) { (context: MarketFactorContext) -> MarketFactorOutcome in
             let e = context.economy
             let listed = Double(e.market?.listings.count ?? 0)
             let concentration = hhClamp(1 / max(1, listed) * 4, 0, 1)

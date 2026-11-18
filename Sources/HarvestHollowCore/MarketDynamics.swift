@@ -398,7 +398,7 @@ public enum MarketFactorModel {
 
     public static let catalogue: [MarketFactorSpec] = {
         var specs: [MarketFactorSpec] = []
-        specs.reserveCapacity(160)
+        specs.reserveCapacity(200)
         specs.append(contentsOf: macroFactors)
         specs.append(contentsOf: rateFactors)
         specs.append(contentsOf: policyFactors)
@@ -410,6 +410,8 @@ public enum MarketFactorModel {
         specs.append(contentsOf: derivativeFactors)
         specs.append(contentsOf: peerFactors)
         specs.append(contentsOf: globalFactors)
+        specs.append(contentsOf: extendedGlobalFactors)
+        specs.append(contentsOf: extendedFactors)
         return specs
     }()
 
@@ -1192,6 +1194,298 @@ public enum MarketFactorModel {
         })
         return specs
     }
+
+
+    // MARK: Extended Global
+
+    private static var extendedGlobalFactors: [MarketFactorSpec] {
+        var specs: [MarketFactorSpec] = []
+        specs.append(MarketFactorSpec(id: "global.geopoliticalRisk", title: "Geopolitical risk", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let risk = hhClamp((1 - e.politicalStability) * 0.6 + e.tariffRate * 0.8 + e.corruption * 0.4, 0, 1)
+            return outcome(pctText(risk), hhClamp(100 - risk * 70, 0, 100), bps(-risk * 14), "Distant quarrels raise insurance on every shipment.")
+        })
+        specs.append(MarketFactorSpec(id: "global.marketLiquidity", title: "Market liquidity", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let liquidity = hhClamp(context.liquidity * 0.8 + context.shortInterest * 0.2, 0, 1)
+            return outcome(pctText(liquidity), hhClamp(100 - liquidity * 100, 0, 100), bps((liquidity - 0.5) * 22), "Global liquidity sets the baseline for all pricing.")
+        })
+        specs.append(MarketFactorSpec(id: "global.policyDivergence", title: "Policy divergence", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let divergence = abs(e.taxRate - e.rulingParty.taxBias) + abs(e.publicSpending - e.rulingParty.spendingBias) + abs(e.tariffRate - e.rulingParty.tariffBias)
+            return outcome(pctText(divergence), hhClamp(100 - divergence * 200, 0, 100), bps(-divergence * 18), "When tax and spending drift from the party platform, markets price the risk.")
+        })
+        specs.append(MarketFactorSpec(id: "global.interestRateSpread", title: "Interest rate spread", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let spread = e.interestRate - e.inflation
+            return outcome(pctText(spread), hhClamp(50 + spread * 400, 0, 100), bps(spread * 30), "Currency carry trades follow the spread.")
+        })
+        specs.append(MarketFactorSpec(id: "global.currencyWar", title: "Currency war", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let pressure = hhClamp(e.tariffRate * 1.2 + (1 - e.currencyStrength) * 0.6, 0, 1)
+            return outcome(pctText(pressure), hhClamp(100 - pressure * 85, 0, 100), bps(-pressure * 13), "Cheapening a currency exports the problem to a neighbour.")
+        })
+        specs.append(MarketFactorSpec(id: "global.supplyChainStress", title: "Supply chain stress", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let stress = hhClamp((1 - e.logistics) * 0.7 + e.imports / max(1, e.supply) * 0.5, 0, 1)
+            return outcome(pctText(stress), hhClamp(100 - stress * 80, 0, 100), bps(-stress * 12), "A single blocked road re-routes an entire season of goods.")
+        })
+        specs.append(MarketFactorSpec(id: "global.pandemicRisk", title: "Public health shock risk", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let risk = hhClamp((1 - e.health) * 0.7 + e.poverty * 0.3, 0, 1)
+            return outcome(pctText(risk), hhClamp(100 - risk * 90, 0, 100), bps(-risk * 15), "Illness removes workers before it removes demand.")
+        })
+        specs.append(MarketFactorSpec(id: "global.energyTransition", title: "Energy transition", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let progress = hhClamp(e.renewableShare * 0.6 + e.infrastructure * 0.4, 0, 1)
+            return outcome(pctText(progress), progress * 100, bps((progress - 0.4) * 14), "Cheap clean power is the newest comparative advantage.")
+        })
+        specs.append(MarketFactorSpec(id: "global.regulatoryWave", title: "Regulatory wave", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let burden = hhClamp(e.corruption * 0.5 + (1 - e.publicServices) * 0.5, 0, 1)
+            return outcome(pctText(burden), hhClamp(100 - burden * 75, 0, 100), bps(-burden * 11), "Rules written for a scandal tax everyone who did not cause it.")
+        })
+        specs.append(MarketFactorSpec(id: "global.demographicDrag", title: "Demographic drag", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let workers = Double(e.workforce) / Double(max(1, e.population))
+            let drag = hhClamp(0.6 - workers + max(0, -e.populationMomentum), -0.3, 0.6)
+            return outcome(pctText(drag), hhClamp(60 - drag * 100, 0, 100), bps(-drag * 12), "Fewer workers per resident means a smaller base for every tax and sale.")
+        })
+        return specs
+    }
+
+
+    // MARK: Extended catalogue (second wave)
+
+    /// A second pass over every group: the numbers a serious desk watches once
+    /// the headline factors are already priced in.
+    private static var extendedFactors: [MarketFactorSpec] {
+        var specs: [MarketFactorSpec] = []
+
+        // Macro & activity
+        specs.append(MarketFactorSpec(id: "macro.productivityTrend", title: "Productivity trend", group: .macro) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(String(format: "%.2f pts", e.productivity), hhClamp(e.productivity * 100, 0, 100), bps((e.productivity - 0.5) * 22), "Output per worker decides which firms can pay wages and still profit.")
+        })
+        specs.append(MarketFactorSpec(id: "macro.populationMomentum", title: "Population momentum", group: .macro) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let momentum = e.populationMomentum
+            return outcome(pctText(momentum), hhClamp(50 + momentum * 400, 0, 100), bps(momentum * 160), "A growing valley widens every market by itself.")
+        })
+        specs.append(MarketFactorSpec(id: "macro.creditStanding", title: "Valley credit standing", group: .macro) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let score = Double(e.creditScore)
+            return outcome("\(e.creditScore)", hhClamp(score / 8.5, 0, 100), bps((score - 600) * 0.08), "Borrowing costs fall for a valley lenders trust.")
+        })
+        specs.append(MarketFactorSpec(id: "macro.publicServices", title: "Public service quality", group: .macro) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.publicServices), e.publicServices * 100, bps((e.publicServices - 0.5) * 18), "Good services lower the friction on every transaction.")
+        })
+
+        // Rates & money
+        specs.append(MarketFactorSpec(id: "rates.realBorrowCost", title: "Real cost of borrowing", group: .rates) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let real = e.interestRate - e.inflation
+            return outcome(pctText(real), hhClamp(60 - real * 500, 0, 100), bps(-real * 150), "Money only stays cheap while the real rate is low.")
+        })
+        specs.append(MarketFactorSpec(id: "rates.currencyStrength", title: "Valley currency strength", group: .rates) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.currencyStrength), hhClamp(e.currencyStrength, 0, 1) * 100, bps((e.currencyStrength - 0.5) * 26), "A firm currency buys imports cheaply and frightens exporters.")
+        })
+        specs.append(MarketFactorSpec(id: "rates.priceIndex", title: "Price index level", group: .rates) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(String(format: "%.2f", e.priceIndex), hhClamp(100 - (e.priceIndex - 1) * 90, 0, 100), bps((1 - e.priceIndex) * 9), "A rising index squeezes margins before it lifts revenue.")
+        })
+        specs.append(MarketFactorSpec(id: "rates.loanBook", title: "Outstanding loan book", group: .rates) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let book = Double(e.loans.count)
+            return outcome("\(e.loans.count) loans", hhClamp(100 - book * 4, 0, 100), bps(-book * 0.8), "Every loan on the book is a claim that must be serviced.")
+        })
+
+        // Tax, politics & policy
+        specs.append(MarketFactorSpec(id: "policy.subsidyReach", title: "Subsidy reach", group: .policy) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.subsidyRate), hhClamp(e.subsidyRate * 400, 0, 100), bps(e.subsidyRate * 40), "Subsidies move costs off the firm and onto the treasury.")
+        })
+        specs.append(MarketFactorSpec(id: "policy.publicDebtLoad", title: "Public debt load", group: .policy) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let load = e.publicDebt / max(1, e.gdp)
+            return outcome(String(format: "%.0f%% of GDP", load * 100), hhClamp(100 - load * 45, 0, 100), bps(-load * 6), "Heavy debt crowds private borrowers out of the market.")
+        })
+        specs.append(MarketFactorSpec(id: "policy.electionClock", title: "Election countdown", group: .policy) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let soon = e.electionInDays <= 0 ? 0.0 : hhClamp(1 - Double(e.electionInDays) / 120, 0, 1)
+            return outcome("\(e.electionInDays) days", hhClamp(70 - soon * 40, 0, 100), bps(-soon * 7), "Markets price promises badly when the ballot is close.")
+        })
+        specs.append(MarketFactorSpec(id: "policy.institutionalTrust", title: "Institutional trust", group: .policy) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let trust = hhClamp(e.politicalStability * 0.6 + (1 - e.corruption) * 0.4, 0, 1)
+            return outcome(pctText(trust), trust * 100, bps((trust - 0.5) * 20), "Contracts are only worth what the courts will enforce.")
+        })
+
+        // Earnings & balance sheets
+        specs.append(MarketFactorSpec(id: "earnings.netWorthMomentum", title: "Valley net worth", group: .earnings) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let worth = e.netWorth / max(1, e.gdp)
+            return outcome(String(format: "%.2f× GDP", worth), hhClamp(worth * 18, 0, 100), bps((worth - 2) * 3), "Balance sheets, not opinions, decide who survives a bad quarter.")
+        })
+        specs.append(MarketFactorSpec(id: "earnings.wagePressure", title: "Wage pressure", group: .earnings) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let pressure = hhClamp(e.averageWage / max(0.01, e.priceIndex * 30) - 1, -0.4, 0.4)
+            return outcome(pctText(pressure) + " vs budget", hhClamp(55 - pressure * 60, 0, 100), bps(-pressure * 30), "Wages outrunning prices are a cost line before they are a demand line.")
+        })
+        specs.append(MarketFactorSpec(id: "earnings.marginSpread", title: "Margin spread", group: .earnings) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let spread = e.priceIndex - e.averageWage / 30
+            return outcome(pctText(spread), hhClamp(50 + spread * 250, 0, 100), bps(spread * 40), "Selling prices above unit costs is the whole game.")
+        })
+        specs.append(MarketFactorSpec(id: "earnings.researchPipeline", title: "Research pipeline", group: .earnings) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(String(format: "%.0f pts", e.researchPoints), hhClamp(Double(e.researchLevel) * 7 + e.researchPoints * 0.2, 0, 100), bps((Double(e.researchLevel) - 5) * 1.5), "Unfinished research is a promise the market discounts early.")
+        })
+
+        // Supply & real economy
+        specs.append(MarketFactorSpec(id: "supply.farmYield", title: "Farm yields", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(String(format: "%.2f×", e.farmYield), hhClamp(e.farmYield * 60, 0, 100), bps((e.farmYield - 1) * 24), "The harvest is the valley's original earnings season.")
+        })
+        specs.append(MarketFactorSpec(id: "supply.waterSecurity", title: "Water security", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.waterAvailability), e.waterAvailability * 100, bps((e.waterAvailability - 0.5) * 16), "Irrigation decides whether a dry spell is a headline or a crisis.")
+        })
+        specs.append(MarketFactorSpec(id: "supply.soilHealth", title: "Soil health", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let health = hhClamp(e.soilFertility - e.soilDegradation, 0, 1)
+            return outcome(pctText(health), health * 100, bps((health - 0.6) * 22), "Degraded soil is a slow tax on every future harvest.")
+        })
+        specs.append(MarketFactorSpec(id: "supply.energyMix", title: "Renewable energy share", group: .supply) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.renewableShare), e.renewableShare * 100, bps((e.renewableShare - 0.3) * 12), "Cheaper power widens margins where the work is heaviest.")
+        })
+
+        // Trade & currency
+        specs.append(MarketFactorSpec(id: "trade.exportMomentum", title: "Export momentum", group: .trade) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(String(format: "%.0f units", e.exports), hhClamp(e.exports / max(1, e.demand) * 80, 0, 100), bps((e.exports / max(1, e.demand) - 0.3) * 26), "Foreign buyers pay in hard currency and steady the whole valley.")
+        })
+        specs.append(MarketFactorSpec(id: "trade.importDependence", title: "Import dependence", group: .trade) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let dependence = e.imports / max(1, e.supply)
+            return outcome(String(format: "%.2f× supply", dependence), hhClamp(100 - dependence * 80, 0, 100), bps(-(dependence - 0.3) * 20), "Every import is a price the valley does not control.")
+        })
+        specs.append(MarketFactorSpec(id: "trade.balanceOfTrade", title: "Balance of trade", group: .trade) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let balance = (e.exports - e.imports) / max(1, e.gdp)
+            return outcome(pctText(balance), hhClamp(50 + balance * 200, 0, 100), bps(balance * 90), "A surplus builds reserves; a deficit builds obligations.")
+        })
+        specs.append(MarketFactorSpec(id: "trade.logisticsCost", title: "Logistics cost", group: .trade) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(1 - e.logistics), hhClamp(e.logistics * 100, 0, 100), bps((e.logistics - 0.5) * 20), "Every mile of bad road shows up in the delivered price.")
+        })
+
+        // Flows & sentiment
+        specs.append(MarketFactorSpec(id: "flows.breadthThrust", title: "Market breadth", group: .flows) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            return outcome(pctText(context.breadth), hhClamp(context.breadth, 0, 1) * 100, bps((context.breadth - 0.5) * 18), "A rally carried by a few names is a rally nobody trusts.")
+        })
+        specs.append(MarketFactorSpec(id: "flows.volatilityRegime", title: "Volatility regime", group: .flows) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            return outcome(pctText(context.volatility), hhClamp(100 - context.volatility * 90, 0, 100), bps(-context.volatility * 90), "Calm markets let leverage grow; violent ones collect it back.")
+        })
+        specs.append(MarketFactorSpec(id: "flows.shortCrowding", title: "Short crowding", group: .flows) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let worst = context.worstShortInterest
+            return outcome(pctText(worst), hhClamp(100 - worst * 120, 0, 100), bps(-worst * 10), "Crowded shorts are fuel for a squeeze in the other direction.")
+        })
+        specs.append(MarketFactorSpec(id: "flows.indexMomentum", title: "Index momentum", group: .flows) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            return outcome(pctText(context.indexChange), hhClamp(50 + context.indexChange * 400, 0, 100), bps(context.indexChange * 120), "Yesterday's move is the cheapest input every trader has.")
+        })
+
+        // Technicals & structure
+        specs.append(MarketFactorSpec(id: "technicals.seasonalDrift", title: "Seasonal drift", group: .technicals) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let season = sin(Double(e.day) * 0.05) * 0.5
+            return outcome(String(format: "%+.2f", season), hhClamp(50 + season * 60, 0, 100), bps(season * 8), "Markets keep a calendar even when the news does not.")
+        })
+        specs.append(MarketFactorSpec(id: "technicals.liquidityDepth", title: "Liquidity depth", group: .technicals) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            return outcome(pctText(context.liquidity), hhClamp(context.liquidity, 0, 1) * 100, bps((context.liquidity - 0.5) * 16), "Thin books turn ordinary orders into accidents.")
+        })
+        specs.append(MarketFactorSpec(id: "technicals.sentimentSpread", title: "Sentiment spread", group: .technicals) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let gap = context.sentiment - context.breadth
+            return outcome(String(format: "%+.2f", gap), hhClamp(50 + gap * 110, 0, 100), bps(gap * 30), "When mood runs ahead of participation, positioning is stretched.")
+        })
+        specs.append(MarketFactorSpec(id: "technicals.volatilityCompression", title: "Volatility compression", group: .technicals) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let squeeze = hhClamp(1 - context.volatility * 30, 0, 1)
+            return outcome(pctText(squeeze), hhClamp(squeeze * 100, 0, 100), bps((squeeze - 0.5) * 18), "Compressed ranges resolve violently in one direction.")
+        })
+
+        // Derivatives & positioning
+        specs.append(MarketFactorSpec(id: "derivatives.shortSkew", title: "Short interest skew", group: .derivatives) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let skew = context.worstShortInterest - context.shortInterest
+            return outcome(pctText(skew), hhClamp(70 - skew * 80, 0, 100), bps(-skew * 35), "Where the bears concentrate is where the pain would be largest.")
+        })
+        specs.append(MarketFactorSpec(id: "derivatives.tailRisk", title: "Tail risk premium", group: .derivatives) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let tail = hhClamp(context.volatility * (1 + context.worstShortInterest), 0, 2)
+            return outcome(pctText(tail), hhClamp(100 - tail * 60, 0, 100), bps(-tail * 9), "Insurance is cheapest exactly when nobody wants it.")
+        })
+        specs.append(MarketFactorSpec(id: "derivatives.carryCurve", title: "Carry curve", group: .derivatives) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let carry = e.interestRate - e.inflation * 0.8
+            return outcome(pctText(carry), hhClamp(55 + carry * 500, 0, 100), bps(carry * 150), "Whoever borrows short and lends long earns the curve, until it inverts.")
+        })
+        specs.append(MarketFactorSpec(id: "derivatives.crowdingIndex", title: "Positioning crowding", group: .derivatives) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let crowd = hhClamp(context.shortInterest * 0.6 + (1 - context.breadth) * 0.4, 0, 1)
+            return outcome(pctText(crowd), hhClamp(100 - crowd * 90, 0, 100), bps(-crowd * 12), "Uniform positioning makes the exit door narrower than the entrance.")
+        })
+
+        // Competitors & sectors
+        specs.append(MarketFactorSpec(id: "peers.competitionIntensity", title: "Competition intensity", group: .peers) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.competition), hhClamp(100 - e.competition * 140, 0, 100), bps(-e.competition * 14), "Crowded markets split the same demand across more hands.")
+        })
+        specs.append(MarketFactorSpec(id: "peers.aiBusinessCount", title: "Rival firm count", group: .peers) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let count = Double(e.aiBusinesses.count)
+            return outcome("\(e.aiBusinesses.count) firms", hhClamp(100 - count * 3, 0, 100), bps(-count * 0.7), "Every new competitor lowers the value of an existing franchise.")
+        })
+        specs.append(MarketFactorSpec(id: "peers.distressCluster", title: "Peer distress", group: .peers) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.bankruptcyRisk), hhClamp(100 - e.bankruptcyRisk * 130, 0, 100), bps(-e.bankruptcyRisk * 15), "A neighbour's failure frees its customers and scares its lenders.")
+        })
+        specs.append(MarketFactorSpec(id: "peers.marketConcentration", title: "Market concentration", group: .peers) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let listed = Double(e.market?.listings.count ?? 0)
+            let concentration = hhClamp(1 / max(1, listed) * 4, 0, 1)
+            return outcome("\(Int(listed)) listed", hhClamp(100 - concentration * 70, 0, 100), bps((0.4 - concentration) * 12), "Few listings mean crowded ownership of too little choice.")
+        })
+
+        // Global & risk
+        specs.append(MarketFactorSpec(id: "global.inequalityGap", title: "Inequality gap", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.inequality), hhClamp(100 - e.inequality * 110, 0, 100), bps(-e.inequality * 10), "Concentrated income narrows the customer base every firm needs.")
+        })
+        specs.append(MarketFactorSpec(id: "global.environmentalRisk", title: "Environmental risk", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let risk = hhClamp(e.pollution * 0.7 + (1 - e.biodiversity) * 0.3, 0, 1)
+            return outcome(pctText(risk), hhClamp(100 - risk * 70, 0, 100), bps(-risk * 11), "Pollution is a liability that eventually reaches the income statement.")
+        })
+        specs.append(MarketFactorSpec(id: "global.publicHealth", title: "Public health", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.health), e.health * 100, bps((e.health - 0.6) * 14), "Healthy workers miss fewer shifts and learn faster.")
+        })
+        specs.append(MarketFactorSpec(id: "global.biodiversityBuffer", title: "Biodiversity buffer", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            let buffer = hhClamp(e.biodiversity * 0.6 + e.cropDiversity * 0.4, 0, 1)
+            return outcome(pctText(buffer), buffer * 100, bps((buffer - 0.5) * 10), "Variety is the valley's insurance against a single bad season.")
+        })
+        specs.append(MarketFactorSpec(id: "global.crimeDrag", title: "Crime drag", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.crime), hhClamp(100 - e.crime * 120, 0, 100), bps(-e.crime * 12), "Every unit of crime is a cost the honest businesses absorb.")
+        })
+        specs.append(MarketFactorSpec(id: "global.infrastructureGap", title: "Infrastructure gap", group: .global) { (context: MarketFactorContext) -> MarketFactorOutcome in
+            let e = context.economy
+            return outcome(pctText(e.infrastructure), e.infrastructure * 100, bps((e.infrastructure - 0.5) * 13), "Roads, power and water pricing underneath every trade.")
+        })
+        return specs
+    }
+
+
 }
 
 // MARK: - Signals on a single listing

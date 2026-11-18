@@ -128,8 +128,6 @@ public struct RootView: View {
             ArcadeView()
         case .economy:
             EconomyView()
-        case .world:
-            World3DView()
         }
     }
 }

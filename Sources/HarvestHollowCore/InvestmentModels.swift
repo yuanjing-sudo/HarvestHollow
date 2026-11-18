@@ -97,6 +97,20 @@ public struct BusinessListing: Codable, Identifiable, Equatable, Sendable {
     public var auditNote: String?
     public var isBankrupt: Bool
 
+    // Trading structure added with the deeper exchange. Every field has a
+    // default so saves written before the candles existed still decode.
+    public var bars: [PriceBar]
+    public var volume: Double
+    public var shortInterest: Double
+    /// Other valley traders' short book, as a fraction of shares outstanding.
+    public var ambientShortInterest: Double
+    public var insiderSales: Double
+    public var beta: Double
+    public var earningsSurprise: Double
+    public var volatilityState: Double
+    public var bidAskSpread: Double
+    public var priceTarget: Double
+
     public var id: UUID { businessID }
 
     public init(
@@ -111,7 +125,17 @@ public struct BusinessListing: Codable, Identifiable, Equatable, Sendable {
         fundamentals: BusinessFundamentals = BusinessFundamentals(),
         lastAuditDay: Int? = nil,
         auditNote: String? = nil,
-        isBankrupt: Bool = false
+        isBankrupt: Bool = false,
+        bars: [PriceBar] = [],
+        volume: Double = 0,
+        shortInterest: Double = 0,
+        ambientShortInterest: Double = 0.02,
+        insiderSales: Double = 0,
+        beta: Double = 1,
+        earningsSurprise: Double = 0,
+        volatilityState: Double = 0.012,
+        bidAskSpread: Double = 0.004,
+        priceTarget: Double = 0
     ) {
         self.businessID = businessID
         self.name = name
@@ -125,10 +149,58 @@ public struct BusinessListing: Codable, Identifiable, Equatable, Sendable {
         self.lastAuditDay = lastAuditDay
         self.auditNote = auditNote
         self.isBankrupt = isBankrupt
+        self.bars = bars
+        self.volume = volume
+        self.shortInterest = shortInterest
+        self.ambientShortInterest = ambientShortInterest
+        self.insiderSales = insiderSales
+        self.beta = beta
+        self.earningsSurprise = earningsSurprise
+        self.volatilityState = volatilityState
+        self.bidAskSpread = bidAskSpread
+        self.priceTarget = priceTarget
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        businessID = try container.decode(UUID.self, forKey: .businessID)
+        name = try container.decode(String.self, forKey: .name)
+        kind = try container.decode(AIBusinessKind.self, forKey: .kind)
+        sharePrice = try container.decode(Double.self, forKey: .sharePrice)
+        sharesOutstanding = max(1, try container.decodeIfPresent(Double.self, forKey: .sharesOutstanding) ?? 1)
+        priceHistory = try container.decodeIfPresent([Double].self, forKey: .priceHistory) ?? [sharePrice]
+        dailyChange = try container.decodeIfPresent(Double.self, forKey: .dailyChange) ?? 0
+        dailyChangePercent = try container.decodeIfPresent(Double.self, forKey: .dailyChangePercent) ?? 0
+        fundamentals = try container.decodeIfPresent(BusinessFundamentals.self, forKey: .fundamentals)
+            ?? BusinessFundamentals()
+        lastAuditDay = try container.decodeIfPresent(Int.self, forKey: .lastAuditDay)
+        auditNote = try container.decodeIfPresent(String.self, forKey: .auditNote)
+        isBankrupt = try container.decodeIfPresent(Bool.self, forKey: .isBankrupt) ?? false
+        bars = try container.decodeIfPresent([PriceBar].self, forKey: .bars) ?? []
+        volume = try container.decodeIfPresent(Double.self, forKey: .volume) ?? 0
+        shortInterest = try container.decodeIfPresent(Double.self, forKey: .shortInterest) ?? 0
+        ambientShortInterest = try container.decodeIfPresent(Double.self, forKey: .ambientShortInterest) ?? 0.02
+        insiderSales = try container.decodeIfPresent(Double.self, forKey: .insiderSales) ?? 0
+        beta = try container.decodeIfPresent(Double.self, forKey: .beta) ?? 1
+        earningsSurprise = try container.decodeIfPresent(Double.self, forKey: .earningsSurprise) ?? 0
+        volatilityState = try container.decodeIfPresent(Double.self, forKey: .volatilityState) ?? 0.012
+        bidAskSpread = try container.decodeIfPresent(Double.self, forKey: .bidAskSpread) ?? 0.004
+        priceTarget = try container.decodeIfPresent(Double.self, forKey: .priceTarget) ?? 0
     }
 
     public var marketCap: Double {
         sharePrice * sharesOutstanding
+    }
+
+    /// Half the quoted bid-ask spread, in coins per share. Buys pay it, sells
+    /// receive less, and shorts pay it again when they cover.
+    public var halfSpread: Double {
+        sharePrice * max(0.0005, bidAskSpread) / 2
+    }
+
+    public var fairValueGap: Double {
+        guard priceTarget > 0 else { return 0 }
+        return (priceTarget - sharePrice) / max(0.01, priceTarget)
     }
 
     public var priceToBook: Double {
@@ -214,9 +286,19 @@ public struct InvestmentHolding: Codable, Identifiable, Equatable, Sendable {
 public enum InvestmentSide: String, Codable, Sendable, Identifiable {
     case buy
     case sell
+    case short
+    case cover
 
     public var id: String { rawValue }
-    public var title: String { self == .buy ? "Buy" : "Sell" }
+
+    public var title: String {
+        switch self {
+        case .buy: return "Buy"
+        case .sell: return "Sell"
+        case .short: return "Short"
+        case .cover: return "Cover"
+        }
+    }
 }
 
 public struct InvestmentTrade: Codable, Identifiable, Equatable, Sendable {
@@ -314,6 +396,23 @@ public struct InvestmentMarket: Codable, Equatable, Sendable {
     public var totalDividends: Double
     public var realizedProfit: Double
 
+    // Deeper exchange state. All optional or defaulted so older saves load.
+    public var shorts: [ShortPosition]?
+    public var indexBars: [PriceBar]
+    public var volatilityIndex: Double
+    public var regime: MarketRegime
+    public var factorBook: MarketFactorBook?
+    public var policyReport: PolicyImpactReport?
+    public var competitors: [CompetitorProfile]?
+    public var competitionHeat: Double
+    public var openRoles: Int
+    public var competitorRnd: Double
+    public var competitorMarketing: Double
+    public var supplierAgreements: Int
+    public var takeoverTalk: Int
+    public var rumour: String?
+    public var sessionsPlayed: Int
+
     public init(
         listings: [BusinessListing] = [],
         holdings: [InvestmentHolding] = [],
@@ -328,7 +427,22 @@ public struct InvestmentMarket: Codable, Equatable, Sendable {
         forcedLiquidations: Int = 0,
         totalInterest: Double = 0,
         totalDividends: Double = 0,
-        realizedProfit: Double = 0
+        realizedProfit: Double = 0,
+        shorts: [ShortPosition]? = nil,
+        indexBars: [PriceBar] = [],
+        volatilityIndex: Double = 22,
+        regime: MarketRegime = .choppy,
+        factorBook: MarketFactorBook? = nil,
+        policyReport: PolicyImpactReport? = nil,
+        competitors: [CompetitorProfile]? = nil,
+        competitionHeat: Double = 0,
+        openRoles: Int = 0,
+        competitorRnd: Double = 0,
+        competitorMarketing: Double = 0,
+        supplierAgreements: Int = 0,
+        takeoverTalk: Int = 0,
+        rumour: String? = nil,
+        sessionsPlayed: Int = 0
     ) {
         self.listings = listings
         self.holdings = holdings
@@ -344,6 +458,59 @@ public struct InvestmentMarket: Codable, Equatable, Sendable {
         self.totalInterest = totalInterest
         self.totalDividends = totalDividends
         self.realizedProfit = realizedProfit
+        self.shorts = shorts
+        self.indexBars = indexBars
+        self.volatilityIndex = volatilityIndex
+        self.regime = regime
+        self.factorBook = factorBook
+        self.policyReport = policyReport
+        self.competitors = competitors
+        self.competitionHeat = competitionHeat
+        self.openRoles = openRoles
+        self.competitorRnd = competitorRnd
+        self.competitorMarketing = competitorMarketing
+        self.supplierAgreements = supplierAgreements
+        self.takeoverTalk = takeoverTalk
+        self.rumour = rumour
+        self.sessionsPlayed = sessionsPlayed
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        listings = try container.decodeIfPresent([BusinessListing].self, forKey: .listings) ?? []
+        holdings = try container.decodeIfPresent([InvestmentHolding].self, forKey: .holdings) ?? []
+        trades = try container.decodeIfPresent([InvestmentTrade].self, forKey: .trades) ?? []
+        marketIndex = try container.decodeIfPresent(Double.self, forKey: .marketIndex) ?? 100
+        marketHistory = try container.decodeIfPresent([Double].self, forKey: .marketHistory) ?? [marketIndex]
+        portfolioHistory = try container.decodeIfPresent([PortfolioPoint].self, forKey: .portfolioHistory) ?? []
+        sentiment = try container.decodeIfPresent(Double.self, forKey: .sentiment) ?? 0.55
+        lastUpdateDay = try container.decodeIfPresent(Int.self, forKey: .lastUpdateDay) ?? 1
+        pendingCash = try container.decodeIfPresent(Double.self, forKey: .pendingCash) ?? 0
+        lastNotice = try container.decodeIfPresent(String.self, forKey: .lastNotice)
+        forcedLiquidations = try container.decodeIfPresent(Int.self, forKey: .forcedLiquidations) ?? 0
+        totalInterest = try container.decodeIfPresent(Double.self, forKey: .totalInterest) ?? 0
+        totalDividends = try container.decodeIfPresent(Double.self, forKey: .totalDividends) ?? 0
+        realizedProfit = try container.decodeIfPresent(Double.self, forKey: .realizedProfit) ?? 0
+        shorts = try container.decodeIfPresent([ShortPosition].self, forKey: .shorts)
+        indexBars = try container.decodeIfPresent([PriceBar].self, forKey: .indexBars) ?? []
+        volatilityIndex = try container.decodeIfPresent(Double.self, forKey: .volatilityIndex) ?? 22
+        regime = try container.decodeIfPresent(MarketRegime.self, forKey: .regime) ?? .choppy
+        factorBook = try container.decodeIfPresent(MarketFactorBook.self, forKey: .factorBook)
+        policyReport = try container.decodeIfPresent(PolicyImpactReport.self, forKey: .policyReport)
+        competitors = try container.decodeIfPresent([CompetitorProfile].self, forKey: .competitors)
+        competitionHeat = try container.decodeIfPresent(Double.self, forKey: .competitionHeat) ?? 0
+        openRoles = try container.decodeIfPresent(Int.self, forKey: .openRoles) ?? 0
+        competitorRnd = try container.decodeIfPresent(Double.self, forKey: .competitorRnd) ?? 0
+        competitorMarketing = try container.decodeIfPresent(Double.self, forKey: .competitorMarketing) ?? 0
+        supplierAgreements = try container.decodeIfPresent(Int.self, forKey: .supplierAgreements) ?? 0
+        takeoverTalk = try container.decodeIfPresent(Int.self, forKey: .takeoverTalk) ?? 0
+        rumour = try container.decodeIfPresent(String.self, forKey: .rumour)
+        sessionsPlayed = try container.decodeIfPresent(Int.self, forKey: .sessionsPlayed) ?? 0
+    }
+
+    /// A short book plus long equity is what the player really owns.
+    public var netWorth: Double {
+        marketValue - marginDebt + shortCollateral + shortProfit
     }
 
     public func listing(for id: UUID) -> BusinessListing? {
@@ -387,6 +554,28 @@ public struct InvestmentMarket: Codable, Equatable, Sendable {
     public var todayChange: Double {
         guard marketHistory.count >= 2 else { return 0 }
         return marketHistory[marketHistory.count - 1] - marketHistory[marketHistory.count - 2]
+    }
+
+    public var todayChangePercent: Double {
+        guard marketHistory.count >= 2 else { return 0 }
+        let previous = marketHistory[marketHistory.count - 2]
+        guard previous > 0 else { return 0 }
+        return (marketHistory[marketHistory.count - 1] - previous) / previous
+    }
+
+    public var gainers: Int { listings.filter { $0.dailyChangePercent > 0 && !$0.isBankrupt }.count }
+    public var losers: Int { listings.filter { $0.dailyChangePercent < 0 && !$0.isBankrupt }.count }
+    public var breadth: Double {
+        let active = listings.filter { !$0.isBankrupt }
+        guard !active.isEmpty else { return 0.5 }
+        return Double(active.filter { $0.dailyChangePercent > 0 }.count) / Double(active.count)
+    }
+
+    public var effectiveIndexBars: [PriceBar] {
+        if !indexBars.isEmpty { return indexBars }
+        return marketHistory.enumerated().map { index, value in
+            PriceBar(day: index + 1, open: value, high: value * 1.004, low: value * 0.996, close: value, volume: 1000)
+        }
     }
 }
 

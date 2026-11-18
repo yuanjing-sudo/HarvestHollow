@@ -1137,6 +1137,41 @@ public final class GameEngine {
         return execution
     }
 
+    /// Opens a short position: the exchange lends shares, the farm posts
+    /// collateral, and the trade profits if the price falls.
+    @discardableResult
+    public func shortBusinessShares(
+        businessID: UUID,
+        shares: Double,
+        leverage: Double
+    ) -> InvestmentExecution {
+        let execution = state.economy.shortShares(
+            businessID: businessID,
+            shares: shares,
+            leverage: leverage,
+            availableCoins: state.coins
+        )
+        if execution.success {
+            state.coins = max(0, state.coins + Int(execution.cashDelta.rounded()))
+        }
+        emit(.message(execution.message))
+        return execution
+    }
+
+    /// Buys borrowed shares back, returning collateral plus any profit.
+    @discardableResult
+    public func coverBusinessShares(
+        businessID: UUID,
+        shares: Double
+    ) -> InvestmentExecution {
+        let execution = state.economy.coverShort(businessID: businessID, shares: shares)
+        if execution.success {
+            state.coins = max(0, state.coins + Int(execution.cashDelta.rounded()))
+        }
+        emit(.message(execution.message))
+        return execution
+    }
+
     /// Funds a forensic audit. Audits unlock at level 8. A clean audit lowers
     /// perceived fraud risk; a dirty one recovers a bounty and creates a case.
     @discardableResult

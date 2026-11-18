@@ -896,6 +896,31 @@ public final class GameStore: ObservableObject {
     }
 
     @discardableResult
+    public func shortBusinessShares(
+        businessID: UUID,
+        shares: Double,
+        leverage: Double
+    ) -> InvestmentExecution {
+        finishInvestmentAction(
+            engine.shortBusinessShares(
+                businessID: businessID,
+                shares: shares,
+                leverage: leverage
+            )
+        )
+    }
+
+    @discardableResult
+    public func coverBusinessShares(
+        businessID: UUID,
+        shares: Double
+    ) -> InvestmentExecution {
+        finishInvestmentAction(
+            engine.coverBusinessShares(businessID: businessID, shares: shares)
+        )
+    }
+
+    @discardableResult
     public func auditBusiness(id: UUID) -> BusinessAuditResult {
         finishAuditAction(engine.auditBusiness(id: id))
     }

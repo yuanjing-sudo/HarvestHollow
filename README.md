@@ -59,8 +59,9 @@ sprite atlases, no web views, no SceneKit, and no JavaScript.
 | **Town** | A navigation hub for the pond, kitchen, almanac, collection, achievements and help guide |
 | **Meadow Dash** | A 2D auto-runner with 16 levels, 6 biomes, jumping, double jumps, dashing, sliding, hearts, combos, apples, clovers and persistent best scores |
 | **Valley Ledger** | A 30-factor linked economy: soil, weather, yields, livestock, labour, population, demand, prices, inflation, credit, policy, taxes, trade, wellbeing, pollution, research, AI firms, elections and disasters, all unlocking in six tiers |
-| **Hollow Exchange** | Live share prices for every AI firm, sparkline charts, business fundamentals, buy/sell orders, 2x/3x margin, interest, dividends, margin calls and a personal trade blotter |
+| **Hollow Exchange** | Live OHLC candles and volume, a 140-factor price model, long **and** short books, a 1x–10x leverage ladder, borrow fees, squeezes, dividends, capital-gains tax, rival dossiers and a full trade blotter |
 | **Crime & justice** | Theft, fraud, embezzlement, tax evasion, bribery, smuggling, arson and price-fixing create court cases, damage firm capital and move share prices; forensic audits unlock at level 8 |
+| **Policy pass-through** | Every tax, subsidy, spending, tariff and rate change is priced into the exchange in coins and percent, and elections re-price the whole market |
 | **Hollow 3D** | A pure-Swift voxel diorama with XYZ axes, a depth-sorted renderer, orbit/pinch camera, six camera presets, object picking, LOD, 74 generated models and a visible Willow Pond with a Visit pond shortcut |
 | **Fishing** | 13 fish, 5 rod levels, bait, rarity, time-of-day and weather windows, best catches, a fish journal and upgrade costs; reachable from Town or the new Farm pond card |
 | **Cooking** | 18 recipes, 5 categories, ingredient checking, a pantry, sellable dishes and timed growth/market/fishing buffs |
@@ -133,6 +134,41 @@ research, cleanup and digital networks), credit and repayment. Loan interest com
 daily, credit scores drift with debt and unemployment, weak firms can fail, and
 elections can change the ruling party's policy biases. Saves migrate from older
 versions and store the entire ledger, including AI citizens and firms.
+
+### The Hollow Exchange
+
+The exchange behind **Valley Ledger → Hollow Exchange** is a full trading desk
+rather than a price ticker. Every morning one session runs in a fixed order: rival
+firms act, any policy change is priced, then each listing is marked against its own
+fair value plus market, sector and technical pressure.
+
+- **140 priced factors** across macro, rates, tax and politics, earnings, supply,
+  trade, flows, technicals, derivatives, competitors and global risk. Each factor
+  reports a value, a score and the basis points it added or removed from the tape.
+- **Real candles.** Every listing stores open/high/low/close plus volume for forty
+  sessions, drawn with a candlestick chart, a twenty-day average and volume bars.
+- **Bounce and mean reversion.** Prices anchor on their own recent average, snap
+  back from stretched z-scores, respect RSI extremes, cluster their volatility and
+  are capped by a circuit breaker, so the chart moves like a market instead of a
+  random walk.
+- **Long and short.** Short selling unlocks at level 4. Cover a short at a profit
+  when the price falls, pay borrow fees while it is open, and risk a squeeze if the
+  crowd is already short.
+- **A leverage ladder.** 1x, 2x, 3x, 5x and 10x unlock at levels 1, 4, 8, 12 and
+  16. Higher rungs charge more interest and force a sale at a tighter equity buffer.
+- **Taxes and politics that bite.** A tax rise cuts after-tax profit, dividends and
+  share prices the next morning; spending and subsidies lift them; tariffs show up
+  in consumer prices; elections adopt a platform and re-price the market by several
+  percent. The policy panel reports all of it in coins per day and percent.
+- **Competitor dossiers.** Every rival has a playbook (price cutter, premium brand,
+  volume player, niche specialist, innovator or consolidator), threat level, share
+  trend, brand, research, supply security, debt load and a rolling list of real
+  moves — price cuts, hiring sprees, product launches, supplier deals, buybacks and
+  hostile bids — that move its own share price and the whole valley's competition
+  heat.
+- **Research sheet.** Ten signals per firm — momentum, stretch, RSI, volatility,
+  drawdown, trend, short interest, price to book, dividend yield and fraud risk —
+  plus a plain-language verdict before you trade.
 
 ### The pond
 
@@ -219,6 +255,11 @@ HarvestHollow/
 │   │   ├── EconomySimulation.swift # Daily linked simulation and reporting
 │   │   ├── EconomyEvents.swift # Firms, elections, random shocks and consequences
 │   │   ├── EconomyActions.swift # Policy, investment and credit actions
+│   │   ├── MarketDynamics.swift # Candles, 140-factor model, signals and regimes
+│   │   ├── MarketTrading.swift # Short book, leverage ladder, borrow fees and squeezes
+│   │   ├── MarketSession.swift # Daily session: rivals, policy shock, prices, index
+│   │   ├── MarketPolitics.swift # Policy pass-through and election forecasts
+│   │   ├── MarketCompetitors.swift # Rival dossiers, strategies and daily moves
 │   │   ├── VoxelGeometry.swift # Vec math, voxel models, faces and builders
 │   │   ├── VoxelRenderer.swift # Orbit camera, culling, lighting, picking and LOD
 │   │   ├── VoxelModelLibrary.swift # Model codec, inspector and face cache
@@ -243,7 +284,8 @@ HarvestHollow/
 │   │   ├── ArcadeView.swift   # Interactive 2D Meadow Dash page
 │   │   ├── EconomyView.swift  # Valley Ledger dashboard, policies and credit
 │   │   ├── EconomyComponents.swift # Sparklines, factor tiles, detail and guide
-│   │   ├── InvestmentView.swift # Hollow Exchange, price charts and crime ledger
+│   │   ├── InvestmentView.swift # Hollow Exchange, candles and crime ledger
+│   │   ├── MarketPanels.swift  # Candle chart, factor board, policy and rival panels
 │   │   ├── BusinessDetailView.swift # Firm fundamentals, trading and audits
 │   │   ├── World3DView.swift  # Interactive XYZ voxel farm page
 │   │   ├── WeatherSheet.swift
@@ -255,7 +297,7 @@ HarvestHollow/
 │   │   ├── Components.swift
 │   │   └── Theme.swift
 │   └── HarvestHollowCLI/      # Headless demo, sprite browser, validator
-├── Tests/                     # 97 core simulation, economy, market and voxel/arcade tests
+├── Tests/                     # 114 core simulation, economy, market and voxel/arcade tests
 ├── Apps/HarvestHollow/        # iOS app target (XcodeGen project)
 ├── Tools/                     # Icon, sprite-sheet and voxel-model generators
 └── docs/
@@ -316,7 +358,7 @@ tab. The app target consumes the repository as a local Swift package
 
 ```bash
 swift build
-swift test                              # 97 tests
+swift test                              # 114 tests
 swift run harvesthollow demo            # full headless gameplay loop
 swift run harvesthollow sprites pig     # terminal sprite browser
 swift run harvesthollow validate        # check all 69 sprite grids
@@ -353,7 +395,7 @@ the arcade career and the Hollow Exchange.
 
 ```bash
 swift test
-# Executed 97 tests, with 0 failures
+# Executed 114 tests, with 0 failures
 ```
 
 ## Regenerating art assets

@@ -37,8 +37,10 @@ public struct AlmanacView: View {
         .scrollIndicators(.hidden)
         .background(HHTheme.cream)
         .navigationTitle("Almanac")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        #endif
     }
 
     // MARK: Season

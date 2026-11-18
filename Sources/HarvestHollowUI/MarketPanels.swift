@@ -181,8 +181,14 @@ struct LedgerRegimeStrip: View {
 /// and the impact column is the basis points it added or removed.
 struct LedgerFactorPanel: View {
     let book: MarketFactorBook
-    @State private var expanded = false
+    @State private var expanded: Bool
     @State private var group: MarketFactorGroup?
+    @State private var query = ""
+
+    init(book: MarketFactorBook, expanded: Bool = false) {
+        self.book = book
+        _expanded = State(initialValue: expanded)
+    }
 
     var body: some View {
         CozyCard(padding: 14) {
@@ -224,38 +230,7 @@ struct LedgerFactorPanel: View {
                 }
 
                 if expanded {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            Button {
-                                group = nil
-                            } label: {
-                                LedgerFactorChip(
-                                    title: "All",
-                                    tilt: book.indexImpactBps,
-                                    selected: group == nil
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            ForEach(MarketFactorGroup.allCases) { candidate in
-                                Button {
-                                    group = candidate
-                                } label: {
-                                    LedgerFactorChip(
-                                        title: candidate.title,
-                                        tilt: book.groupTilt(candidate),
-                                        selected: group == candidate
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    let shown = group.map { book.readouts(in: $0) } ?? book.readouts
-                    VStack(spacing: 4) {
-                        ForEach(shown) { readout in
-                            LedgerFactorRow(readout: readout)
-                        }
-                    }
+                    fullBook
                 }
 
                 Button {
@@ -272,47 +247,232 @@ struct LedgerFactorPanel: View {
             }
         }
     }
+
+    // MARK: Full book
+
+    private var fullBook: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            searchField
+            groupChips
+
+            HStack(spacing: 4) {
+                Text(resultSummary)
+                Spacer(minLength: 0)
+                Text(String(format: "%+.0fbp", visibleTilt))
+                    .foregroundStyle(visibleTilt >= 0 ? HHTheme.forest : HHTheme.terracotta)
+            }
+            .font(.system(size: 8, weight: .black, design: .rounded))
+            .foregroundStyle(HHTheme.muted)
+
+            if sections.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("No factor matches \u{201C}\(query)\u{201D}.")
+                        .font(.hhCaption(10))
+                }
+                .foregroundStyle(HHTheme.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(HHTheme.paperDeep.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+            } else {
+                LazyVStack(alignment: .leading, spacing: 3) {
+                    ForEach(sections, id: \.group) { section in
+                        LedgerFactorSectionHeader(
+                            group: section.group,
+                            count: section.readouts.count,
+                            tilt: book.groupTilt(section.group)
+                        )
+                        ForEach(section.readouts) { readout in
+                            LedgerFactorRow(readout: readout)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(HHTheme.muted)
+            TextField("Search all \(book.readouts.count) factors", text: $query)
+                .textFieldStyle(.plain)
+                .font(.hhCaption(10.5))
+                .foregroundStyle(HHTheme.ink)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(HHTheme.muted.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(HHTheme.paperDeep.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(HHTheme.ink.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    private var groupChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                Button {
+                    group = nil
+                } label: {
+                    LedgerFactorChip(
+                        title: "All",
+                        tilt: book.indexImpactBps,
+                        selected: group == nil
+                    )
+                }
+                .buttonStyle(.plain)
+                ForEach(MarketFactorGroup.allCases) { candidate in
+                    Button {
+                        group = candidate
+                    } label: {
+                        LedgerFactorChip(
+                            title: candidate.title,
+                            tilt: book.groupTilt(candidate),
+                            selected: group == candidate
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var visible: [MarketFactorReadout] {
+        let base = group.map { book.readouts(in: $0) } ?? book.readouts
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return base }
+        return base.filter {
+            $0.title.localizedCaseInsensitiveContains(trimmed)
+                || $0.note.localizedCaseInsensitiveContains(trimmed)
+                || $0.id.localizedCaseInsensitiveContains(trimmed)
+        }
+    }
+
+    private var sections: [(group: MarketFactorGroup, readouts: [MarketFactorReadout])] {
+        let rows = visible
+        return MarketFactorGroup.allCases.compactMap { candidate in
+            let matching = rows.filter { $0.group == candidate }
+            return matching.isEmpty ? nil : (candidate, matching)
+        }
+    }
+
+    private var visibleTilt: Double {
+        visible.reduce(0) { $0 + $1.impactBps }
+    }
+
+    private var resultSummary: String {
+        let scope = group?.title ?? "every group"
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "\(visible.count) factors across \(scope)"
+        }
+        return "\(visible.count) of \(book.readouts.count) factors match"
+    }
 }
 
+/// A thin magnitude bar: how hard this factor is pulling on the tape.
 private struct LedgerFactorRow: View {
     let readout: MarketFactorReadout
 
     var body: some View {
-        HStack(alignment: .top, spacing: 7) {
-            Image(systemName: readout.group.icon)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(tint)
-                .frame(width: 20, height: 20)
-                .background(tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 7) {
+                Image(systemName: readout.group.icon)
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 19, height: 19)
+                    .background(tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                VStack(alignment: .leading, spacing: 1) {
                     Text(readout.title)
                         .font(.hhCaption(10))
                         .foregroundStyle(HHTheme.ink)
                         .lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(readout.valueText)
-                        .font(.system(size: 8.5, weight: .black, design: .rounded))
+                    Text(readout.note)
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
                         .foregroundStyle(HHTheme.muted)
                         .lineLimit(1)
                 }
-                Text(readout.note)
-                    .font(.system(size: 8, weight: .medium, design: .rounded))
-                    .foregroundStyle(HHTheme.muted)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(readout.impactLabel)
+                        .font(.system(size: 9, weight: .black, design: .rounded))
+                        .foregroundStyle(tint)
+                        .lineLimit(1)
+                    Text(readout.valueText)
+                        .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(HHTheme.muted)
+                        .lineLimit(1)
+                }
+                .frame(minWidth: 46, alignment: .trailing)
             }
-            Text(readout.impactLabel)
-                .font(.system(size: 8.5, weight: .black, design: .rounded))
-                .foregroundStyle(tint)
-                .frame(width: 46, alignment: .trailing)
+            magnitudeBar
         }
-        .padding(6)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 6)
         .background(HHTheme.paperDeep.opacity(0.3), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private var magnitudeBar: some View {
+        let magnitude = min(1, abs(readout.impactBps) / 15)
+        return Capsule()
+            .fill(HHTheme.ink.opacity(0.05))
+            .frame(height: 2.5)
+            .overlay(alignment: .leading) {
+                GeometryReader { proxy in
+                    Capsule()
+                        .fill(tint.opacity(0.6))
+                        .frame(width: max(1.5, proxy.size.width * magnitude))
+                }
+            }
+            .padding(.leading, 26)
     }
 
     private var tint: Color {
         readout.isBullish ? HHTheme.forest : HHTheme.terracotta
+    }
+}
+
+/// One group of the book: what it is, how many inputs it holds, and its net pull.
+private struct LedgerFactorSectionHeader: View {
+    let group: MarketFactorGroup
+    let count: Int
+    let tilt: Double
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: group.icon)
+                .font(.system(size: 8.5, weight: .bold))
+                .foregroundStyle(HHTheme.lavender)
+                .frame(width: 17, height: 17)
+                .background(HHTheme.lavender.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+            Text(group.title)
+                .font(.system(size: 9.5, weight: .black, design: .rounded))
+                .foregroundStyle(HHTheme.ink)
+                .lineLimit(1)
+            Text("\(count)")
+                .font(.system(size: 7.5, weight: .black, design: .rounded))
+                .foregroundStyle(HHTheme.muted)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(HHTheme.paperDeep.opacity(0.75), in: Capsule())
+            Spacer(minLength: 0)
+            Text(String(format: "%+.0fbp", tilt))
+                .font(.system(size: 8, weight: .black, design: .rounded))
+                .foregroundStyle(tilt >= 0 ? HHTheme.forest : HHTheme.terracotta)
+        }
+        .padding(.top, 6)
     }
 }
 

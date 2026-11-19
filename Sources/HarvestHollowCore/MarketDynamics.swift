@@ -426,7 +426,13 @@ public enum MarketFactorModel {
                 let growth = e.history.count >= 2
                     ? (e.history[e.history.count - 1].gdp - e.history[e.history.count - 2].gdp) / max(1, e.history[e.history.count - 2].gdp)
                     : 0
-                return outcome(pctText(growth) + " d/d", 50 + growth * 900, bps(growth * 620), "Output is the tide every share price floats on.")
+                // Factor in 4-period trend: accelerating or decelerating growth
+                let trend: Double = e.history.count >= 4
+                    ? (e.history[e.history.count - 1].gdp - e.history[e.history.count - 4].gdp) / max(1, e.history[e.history.count - 4].gdp) / 4.0
+                    : 0
+                // Momentum: recent trend amplifies or dampens current reading
+                let momentum = growth + trend * 0.5
+                return outcome(pctText(growth) + " [\\(String(format: \"%+.1f\", trend * 100))% trend]", 50 + momentum * 900, bps(momentum * 620), "Output is the tide every share price floats on. Recent trend amplifies or dampens the current reading.")
             },
             MarketFactorSpec(id: "macro.outputGap", title: "Output gap", group: .macro) { (context: MarketFactorContext) -> MarketFactorOutcome in
                 let e = context.economy

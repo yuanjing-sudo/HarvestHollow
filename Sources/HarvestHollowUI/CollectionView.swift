@@ -36,8 +36,10 @@ public struct CollectionView: View {
         .scrollIndicators(.hidden)
         .background(HHTheme.cream)
         .navigationTitle("Collection")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        #endif
         .sheet(item: $selectedFish) { fish in
             FishDetailSheet(fish: fish)
                 .environmentObject(store)

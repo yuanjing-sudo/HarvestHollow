@@ -93,6 +93,11 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
     public var market: InvestmentMarket?
     public var justice: JusticeLedger?
 
+    /// The policy settings the exchange has already priced. Comparing today's
+    /// settings to this snapshot is what makes a tax rise or a new subsidy show
+    /// up as a real move on the tape instead of a silent number change.
+    public var policyBaseline: PolicyBaseline?
+
     public init(level: Int = 1) {
         tier = EconomyTier.forLevel(level)
         lastKnownLevel = level
@@ -173,6 +178,15 @@ public struct ValleyEconomy: Codable, Equatable, Sendable {
         history = [snapshot()]
         market = InvestmentMarket.seed(businesses: aiBusinesses, day: day)
         justice = JusticeLedger()
+        policyBaseline = PolicyBaseline(
+            day: day,
+            taxRate: taxRate,
+            subsidyRate: subsidyRate,
+            publicSpending: publicSpending,
+            tariffRate: tariffRate,
+            interestRate: interestRate,
+            party: rulingParty
+        )
     }
 
     public static func seedBusinesses(level: Int) -> [AIBusiness] {

@@ -55,8 +55,10 @@ public struct AchievementsView: View {
         .scrollIndicators(.hidden)
         .background(HHTheme.cream)
         .navigationTitle("Achievements")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        #endif
     }
 
     // MARK: Summary

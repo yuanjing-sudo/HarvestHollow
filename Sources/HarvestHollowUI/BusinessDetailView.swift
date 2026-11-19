@@ -60,11 +60,34 @@ struct BusinessDetailView: View {
                 if let listing {
                     priceCard(listing)
                     tradeCard(listing)
+                    LedgerShortTradeCard(
+                        listing: listing,
+                        economy: economy,
+                        coins: store.state.coins,
+                        onOpen: { shares, ratio in
+                            store.shortBusinessShares(
+                                businessID: listing.businessID,
+                                shares: shares,
+                                leverage: ratio
+                            )
+                        },
+                        onCover: { shares in
+                            store.coverBusinessShares(
+                                businessID: listing.businessID,
+                                shares: shares
+                            )
+                        }
+                    )
                     fundamentalsCard(listing)
+                    competitorCard(listing)
                     tradesCard(listing)
                     peersCard(listing)
                     incidentsCard(listing)
                     auditCard(listing)
+                    LedgerPolicyImpactCard(
+                        report: market.policyReport,
+                        forecast: economy.electionForecast
+                    )
                 } else {
                     notFound
                 }
@@ -155,11 +178,8 @@ struct BusinessDetailView: View {
                         .padding(.vertical, 3)
                         .background(HHTheme.gold.opacity(0.12), in: Capsule())
                 }
-                LedgerPriceChart(
-                    values: listing.priceHistory,
-                    tint: listing.dailyChangePercent >= 0 ? HHTheme.forest : HHTheme.terracotta,
-                    height: 92
-                )
+                LedgerCandleChart(bars: listing.effectiveBars, height: 138)
+                LedgerSignalGrid(listing: listing)
                 HStack(spacing: 7) {
                     LedgerMiniStat(title: "MARKET CAP", value: "\(Int(listing.marketCap.rounded()))c", tint: HHTheme.goldDeep)
                     LedgerMiniStat(title: "P/E", value: (listing.priceToEarnings.map { String(format: "%.1f", $0) } ?? "—"), tint: HHTheme.sky)
@@ -293,27 +313,27 @@ struct BusinessDetailView: View {
                                 .foregroundStyle(HHTheme.muted)
                         }
                         HStack(spacing: 5) {
-                            ForEach([1.0, 2.0, 3.0], id: \.self) { level in
+                            ForEach(LeverageLadder.tiers, id: \.multiple) { tier in
                                 Button {
-                                    leverage = level
+                                    leverage = tier.multiple
                                 } label: {
                                     VStack(spacing: 1) {
-                                        Text("\(Int(level))x")
+                                        Text("\(Int(tier.multiple))x")
                                             .font(.system(size: 11, weight: .black, design: .rounded))
-                                        Text(level == 1 ? "cash" : "margin")
+                                        Text(tier.isCash ? "cash" : "margin")
                                             .font(.system(size: 7, weight: .bold, design: .rounded))
                                     }
-                                    .foregroundStyle(leverage == level ? .white : (level <= maxLeverage ? HHTheme.forest : HHTheme.muted))
+                                    .foregroundStyle(leverage == tier.multiple ? .white : (tier.multiple <= maxLeverage ? HHTheme.forest : HHTheme.muted))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 6)
                                     .background(
-                                        leverage == level ? HHTheme.goldDeep : HHTheme.paperDeep,
+                                        leverage == tier.multiple ? HHTheme.goldDeep : HHTheme.paperDeep,
                                         in: RoundedRectangle(cornerRadius: 9)
                                     )
                                 }
                                 .buttonStyle(.plain)
-                                .disabled(level > maxLeverage)
-                                .opacity(level > maxLeverage ? 0.4 : 1)
+                                .disabled(tier.multiple > maxLeverage)
+                                .opacity(tier.multiple > maxLeverage ? 0.4 : 1)
                             }
                         }
                     }
@@ -572,6 +592,27 @@ struct BusinessDetailView: View {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private func competitorCard(_ listing: BusinessListing) -> some View {
+        let profile = (market.competitors ?? []).first { $0.businessID == listing.businessID }
+        return CozyCard(padding: 13) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionHeader(
+                    "Rival dossier",
+                    subtitle: "How this firm competes: playbook, share, brand, research and its latest move.",
+                    icon: "person.3.fill",
+                    accent: HHTheme.lavender
+                )
+                if let profile {
+                    LedgerCompetitorCard(profile: profile)
+                } else {
+                    Text("No dossier on file for this listing yet. Rivals are profiled as the exchange learns about them.")
+                        .font(.hhCaption(10))
+                        .foregroundStyle(HHTheme.muted)
                 }
             }
         }

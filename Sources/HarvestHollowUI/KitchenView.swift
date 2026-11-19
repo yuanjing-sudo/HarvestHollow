@@ -57,8 +57,10 @@ public struct KitchenView: View {
         .scrollIndicators(.hidden)
         .background(HHTheme.cream)
         .navigationTitle("Cottage Kitchen")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        #endif
         .sheet(item: $selectedRecipe) { recipe in
             RecipeDetailSheet(recipe: recipe)
                 .environmentObject(store)

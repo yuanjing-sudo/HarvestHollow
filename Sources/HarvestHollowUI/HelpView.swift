@@ -34,8 +34,10 @@ public struct HelpView: View {
         .scrollIndicators(.hidden)
         .background(HHTheme.cream)
         .navigationTitle("How to Play")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        #endif
     }
 
     // MARK: Quick start

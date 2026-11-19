@@ -35,8 +35,13 @@ struct LedgerExchangeSection: View {
                 }
 
                 marketPulse
+                LedgerRegimeStrip(market: market)
                 portfolioSummary
                 realizedLine
+                LedgerPolicyImpactCard(
+                    report: market.policyReport,
+                    forecast: economy.electionForecast
+                )
 
                 if let notice = market.lastNotice {
                     HStack(alignment: .top, spacing: 6) {
@@ -84,6 +89,24 @@ struct LedgerExchangeSection: View {
                     }
                 }
 
+                if !market.shortPositions.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("SHORT POSITIONS")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                            .foregroundStyle(HHTheme.muted)
+                        ForEach(market.shortPositions) { position in
+                            if let listing = market.listing(for: position.businessID) {
+                                Button {
+                                    onSelect(listing)
+                                } label: {
+                                    LedgerShortPositionRow(position: position, listing: listing)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+
                 HStack(alignment: .bottom) {
                     Text("VALLEY COMPETITORS")
                         .font(.system(size: 8, weight: .black, design: .rounded))
@@ -108,6 +131,18 @@ struct LedgerExchangeSection: View {
                     }
                 }
 
+                LedgerCompetitorBoard(profiles: market.competitors ?? []) { id in
+                    if let listing = market.listing(for: id) {
+                        onSelect(listing)
+                    }
+                }
+
+                if let book = market.factorBook {
+                    LedgerFactorPanel(book: book)
+                }
+
+                LedgerLeverageLadder(economy: economy)
+
                 HStack(spacing: 7) {
                     Image(systemName: "lock.open.fill")
                         .font(.system(size: 10, weight: .bold))
@@ -128,13 +163,12 @@ struct LedgerExchangeSection: View {
     }
 
     private var leverageCopy: String {
-        if economy.maxInvestmentLeverage >= 3 {
-            return "Margin up to 3x. Interest accrues daily; a 25% equity buffer triggers a forced sale."
+        let long = Int(economy.maxInvestmentLeverage)
+        let short = Int(economy.maxShortLeverage)
+        if long >= 2 {
+            return "Long up to \(long)x, short up to \(short)x. Borrow fees accrue daily and thin equity triggers a forced sale."
         }
-        if economy.maxInvestmentLeverage >= 2 {
-            return "Margin up to 2x. Reach level 8 for 3x leverage and forensic audits."
-        }
-        return "Leverage unlocks at level 4. Until then every purchase is cash-only."
+        return "Leverage and short selling unlock at level 4. Until then every purchase is cash-only."
     }
 
     private var marketPulse: some View {
@@ -156,11 +190,7 @@ struct LedgerExchangeSection: View {
                     .foregroundStyle(HHTheme.muted)
             }
             .frame(width: 118, alignment: .leading)
-            LedgerPriceChart(
-                values: market.marketHistory,
-                tint: market.todayChange >= 0 ? HHTheme.forest : HHTheme.terracotta,
-                height: 54
-            )
+            LedgerCandleChart(bars: market.effectiveIndexBars, height: 62)
         }
         .padding(9)
         .background(HHTheme.paper.opacity(0.8), in: RoundedRectangle(cornerRadius: 13))

@@ -31,7 +31,9 @@ public struct TownView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
+            #if os(iOS)
             .toolbar(.hidden, for: .navigationBar)
+            #endif
             .navigationDestination(for: TownRoute.self) { route in
                 destination(for: route)
             }

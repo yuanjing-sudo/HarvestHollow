@@ -95,10 +95,13 @@ extension ValleyEconomy {
         guard electionInDays <= 0 else { return nil }
 
         let oldParty = rulingParty
-        let greenWeight = 0.18 + sustainability * 0.24 + education * 0.08
-        let merchantWeight = 0.18 + tradeBalance / 60 + (1 - taxRate) * 0.2
-        let workerWeight = 0.18 + (1 - unemployment) * 0.12 + poverty * 0.18
-        let stewardWeight = 0.18 + politicalStability * 0.24
+        let oldTax = taxRate
+        let oldSpending = publicSpending
+        let forecast = electionForecast
+        let greenWeight = max(0.02, forecast.share(for: .green))
+        let merchantWeight = max(0.02, forecast.share(for: .merchants))
+        let workerWeight = max(0.02, forecast.share(for: .workers))
+        let stewardWeight = max(0.02, forecast.share(for: .stewards))
         let total = greenWeight + merchantWeight + workerWeight + stewardWeight
         let roll = rng.double01() * total
 
@@ -112,29 +115,38 @@ extension ValleyEconomy {
             rulingParty = .stewards
         }
 
-        taxRate = hhClamp(taxRate * 0.6 + rulingParty.taxBias * 0.4, 0.05, 0.4)
+        // A new government does not tinker: it mostly adopts its platform, so
+        // the exchange has to re-price tax, spending and trade all at once.
+        let adoption = oldParty == rulingParty ? 0.55 : 0.85
+        taxRate = hhClamp(taxRate * (1 - adoption) + rulingParty.taxBias * adoption, 0.05, 0.4)
         subsidyRate = hhClamp(
-            subsidyRate * 0.6 + rulingParty.subsidyBias * 0.4,
+            subsidyRate * (1 - adoption) + rulingParty.subsidyBias * adoption,
             0, 0.3
         )
         tariffRate = hhClamp(
-            tariffRate * 0.6 + rulingParty.tariffBias * 0.4,
+            tariffRate * (1 - adoption) + rulingParty.tariffBias * adoption,
             0, 0.35
         )
         publicSpending = hhClamp(
-            publicSpending * 0.6 + rulingParty.spendingBias * 0.4,
+            publicSpending * (1 - adoption) + rulingParty.spendingBias * adoption,
             0.05, 0.4
         )
+        politicalStability = hhClamp(
+            politicalStability + (oldParty == rulingParty ? 0.03 : -0.02),
+            0.1, 1
+        )
         electionInDays = 24 + rng.int(in: 0...12)
-        let voteShare = 42 + Int(rng.double01() * 23)
+        let voteShare = Int((forecast.share(for: rulingParty) * 100).rounded())
         let changed = oldParty != rulingParty
+        let taxMove = (taxRate - oldTax) * 100
+        let spendingMove = (publicSpending - oldSpending) * 100
 
         return EconomyEventRecord(
             day: day,
             kind: .election,
             title: changed ? "\(rulingParty.shortTitle) wins the valley vote" : "\(rulingParty.shortTitle) holds the valley",
-            detail: "\(voteShare)% support. Tax \(Int((taxRate * 100).rounded()))%, spending \(Int((publicSpending * 100).rounded()))%, tariff \(Int((tariffRate * 100).rounded()))%.",
-            impact: changed ? 0.02 : 0.01
+            detail: "\(voteShare)% support. Tax moves \(String(format: "%+.1f", taxMove)) points to \(Int((taxRate * 100).rounded()))%, spending \(String(format: "%+.1f", spendingMove)) points, tariff \(Int((tariffRate * 100).rounded()))%. The exchange re-prices tomorrow.",
+            impact: changed ? 0.03 : 0.01
         )
     }
 }

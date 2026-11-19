@@ -7,11 +7,19 @@ extension InvestmentMarket {
         let listings = businesses.enumerated().map { index, firm in
             BusinessListing.seed(firm: firm, index: index, day: day)
         }
+        let competitors = businesses.enumerated().compactMap { index, firm -> CompetitorProfile? in
+            guard let listing = listings.first(where: { $0.businessID == firm.id }) else { return nil }
+            return CompetitorProfile.seed(firm: firm, listing: listing, index: index)
+        }
         return InvestmentMarket(
             listings: listings,
             marketIndex: 100,
             marketHistory: [100],
-            lastUpdateDay: day
+            lastUpdateDay: day,
+            indexBars: [PriceBar(day: day, open: 100, high: 100.6, low: 99.4, close: 100, volume: 0)],
+            competitors: competitors,
+            competitionHeat: 0.12,
+            sessionsPlayed: 0
         )
     }
 }
@@ -24,6 +32,17 @@ extension BusinessListing {
             let wave = sin(Double(offset) * 0.9 + Double(firm.name.count) * 0.37) * 0.035
             let drift = Double(offset - 11) * 0.004
             return max(0.5, base * (1 + wave + drift))
+        }
+        let bars = history.enumerated().map { offset, price -> PriceBar in
+            let wiggle = sin(Double(offset) * 1.7 + Double(index)) * 0.008
+            return PriceBar(
+                day: max(1, day - (history.count - 1 - offset)),
+                open: price * (1 - wiggle * 0.4),
+                high: price * (1 + abs(wiggle) + 0.004),
+                low: price * (1 - abs(wiggle) - 0.004),
+                close: price,
+                volume: (shares * 0.012).rounded()
+            )
         }
         let revenue = firm.output * 6.5
         let wage = Double(firm.employees) * 22
@@ -55,7 +74,17 @@ extension BusinessListing {
             priceHistory: history,
             dailyChange: 0,
             dailyChangePercent: 0,
-            fundamentals: fundamentals
+            fundamentals: fundamentals,
+            bars: bars,
+            volume: (shares * 0.012).rounded(),
+            shortInterest: 0.02,
+            ambientShortInterest: 0.015 + Double(index % 4) * 0.01,
+            insiderSales: 0,
+            beta: 0.75 + Double(index % 5) * 0.09,
+            earningsSurprise: 0,
+            volatilityState: firm.kind.marketVolatility * 0.5,
+            bidAskSpread: 0.004 + firm.kind.marketVolatility * 0.02,
+            priceTarget: base
         )
     }
 }
@@ -93,9 +122,7 @@ extension ValleyEconomy {
     }
 
     public var maxInvestmentLeverage: Double {
-        if lastKnownLevel >= 8 { return 3 }
-        if lastKnownLevel >= 4 { return 2 }
-        return 1
+        LeverageLadder.maxMultiple(level: lastKnownLevel)
     }
 
     public var investmentAuditUnlocked: Bool { lastKnownLevel >= 8 }
@@ -135,15 +162,44 @@ extension ValleyEconomy {
             }
         }
 
+        // Upgrade saves written before candles, shorts and rival dossiers existed.
+        for index in existing.listings.indices where existing.listings[index].bars.isEmpty {
+            let history = existing.listings[index].priceHistory
+            let day0 = max(1, day - history.count + 1)
+            existing.listings[index].bars = history.enumerated().map { offset, price in
+                PriceBar(
+                    day: day0 + offset,
+                    open: price * 0.998,
+                    high: price * 1.006,
+                    low: price * 0.994,
+                    close: price,
+                    volume: existing.listings[index].sharesOutstanding * 0.01
+                )
+            }
+        }
+        if existing.competitors == nil || existing.competitors?.isEmpty == true {
+            existing.competitors = aiBusinesses.compactMap { firm in
+                guard let listing = existing.listings.first(where: { $0.businessID == firm.id }) else { return nil }
+                return CompetitorProfile.seed(firm: firm, listing: listing, index: 0)
+            }
+        }
         if existing.marketHistory.isEmpty { existing.marketHistory = [existing.marketIndex] }
+        if existing.indexBars.isEmpty {
+            let firstDay = max(1, day - existing.marketHistory.count + 1)
+            existing.indexBars = existing.marketHistory.enumerated().map { offset, value in
+                PriceBar(day: firstDay + offset, open: value, high: value * 1.004, low: value * 0.996, close: value, volume: 0)
+            }
+        }
         if existing.portfolioHistory.isEmpty {
             existing.portfolioHistory = [
                 PortfolioPoint(day: day, value: existing.marketValue, cost: existing.costBasis, debt: existing.marginDebt)
             ]
         }
-        existing.marketHistory = Array(existing.marketHistory.suffix(30))
-        existing.portfolioHistory = Array(existing.portfolioHistory.suffix(30))
-        existing.trades = Array(existing.trades.prefix(40))
+        existing.marketHistory = Array(existing.marketHistory.suffix(40))
+        existing.indexBars = Array(existing.indexBars.suffix(40))
+        existing.portfolioHistory = Array(existing.portfolioHistory.suffix(40))
+        existing.trades = Array(existing.trades.prefix(48))
+        if existing.shorts == nil { existing.shorts = [] }
         market = existing
     }
 
@@ -154,194 +210,6 @@ extension ValleyEconomy {
         existing.pendingCash = 0
         market = existing
         return cash
-    }
-}
-
-// MARK: - Daily market
-
-extension ValleyEconomy {
-    mutating func advanceMarket(inputs: EconomyInputs, rng: inout GameRNG) {
-        ensureInvestmentMarket()
-        guard var market else { return }
-
-        let businessByID = Dictionary(uniqueKeysWithValues: aiBusinesses.map { ($0.id, $0) })
-        let totalOutput = max(1, aiBusinesses.reduce(0) { $0 + $1.output })
-        let demandSignal = hhClamp(demand / max(1, supply), 0.45, 1.7)
-        let baseAverage = market.listings
-            .compactMap { $0.priceHistory.first }
-            .filter { $0 > 0 }
-            .reduce(0, +) / Double(max(1, market.listings.count))
-        let previousSentiment = market.sentiment
-
-        for index in market.listings.indices {
-            var listing = market.listings[index]
-            guard let firm = businessByID[listing.businessID], !listing.isBankrupt else {
-                if listing.sharePrice > 0 {
-                    listing.isBankrupt = true
-                    listing.sharePrice = 0
-                    listing.dailyChangePercent = -1
-                    listing.priceHistory.append(0)
-                    listing.priceHistory = Array(listing.priceHistory.suffix(30))
-                    market.listings[index] = listing
-                }
-                continue
-            }
-
-            let revenue = max(0, firm.output * 6.5 * demandSignal * (1 - taxRate * 0.5))
-            let wageBill = Double(firm.employees) * averageWage * 0.5
-            let capitalCost = firm.capital * max(0, interestRate) / 12
-            let pollutionCost = firm.pollution * 12
-            let oldDebt = listing.fundamentals.debt
-            let debtCost = oldDebt * max(0, interestRate) / 365
-            let expenses = wageBill + capitalCost + pollutionCost + debtCost
-            let profit = revenue - expenses
-            let oldRevenue = listing.fundamentals.revenue
-            let growth = hhClamp((revenue - oldRevenue) / max(1, oldRevenue), -0.6, 0.6)
-            let risk = hhClamp(
-                listing.fundamentals.fraudRisk * 0.72
-                    + firm.kind.fraudBaseline * 0.35
-                    + corruption * 0.22
-                    + (1 - education) * 0.08
-                    + max(0, -profit) * 0.008
-                    + competition * 0.03
-                    - publicServices * 0.06,
-                0.01, 0.95
-            )
-            let reputation = hhClamp(
-                firm.mood * 0.68 + (1 - risk) * 0.22 + previousSentiment * 0.1,
-                0.05, 1
-            )
-            let bookValue = max(1, firm.capital + listing.fundamentals.cash - oldDebt * 0.55 + profit * 0.15)
-            let dividend = profit > 0
-                ? min(0.8, profit / max(1, listing.sharesOutstanding) * 0.16)
-                : 0
-            let fundamentals = BusinessFundamentals(
-                revenue: revenue,
-                expenses: expenses,
-                profit: profit,
-                cash: max(0, listing.fundamentals.cash + profit * 0.22),
-                debt: max(0, oldDebt + max(0, -profit) * 0.05),
-                bookValue: bookValue,
-                marketShare: firm.output / totalOutput,
-                growth: growth,
-                reputation: reputation,
-                fraudRisk: risk,
-                volatility: firm.kind.marketVolatility,
-                employees: firm.employees,
-                output: firm.output,
-                dividendPerShare: dividend,
-                lastUpdatedDay: day
-            )
-
-            let fair = max(
-                0.35,
-                bookValue / max(1, listing.sharesOutstanding)
-                    * (1 + growth * 2.6)
-                    * (1 + reputation * 0.28)
-                    * (1 - risk * 0.35)
-                    * (0.78 + market.sentiment * 0.44)
-            )
-            let drift = (fair - listing.sharePrice) / max(0.5, listing.sharePrice) * 0.28
-            let noise = (rng.double01() * 2 - 1) * fundamentals.volatility * 0.16
-            let cycle = sin(Double(day) * 0.63 + Double(listing.name.count) * 0.41) * 0.012
-            let previousPrice = listing.sharePrice
-            let price = hhClamp(previousPrice * (1 + drift + noise + cycle), 0.25, 999)
-            listing.sharePrice = price
-            listing.dailyChange = price - previousPrice
-            listing.dailyChangePercent = previousPrice > 0 ? (price - previousPrice) / previousPrice : 0
-            listing.fundamentals = fundamentals
-            listing.priceHistory.append(price)
-            listing.priceHistory = Array(listing.priceHistory.suffix(30))
-            market.listings[index] = listing
-        }
-
-        // Margin interest, dividends, and forced liquidation. Interest makes
-        // leverage a real cost; a sharp fall can wipe out the equity.
-        for index in market.holdings.indices.reversed() {
-            var holding = market.holdings[index]
-            guard let listing = market.listings.first(where: { $0.businessID == holding.businessID }) else {
-                continue
-            }
-            let price = listing.sharePrice
-            let value = holding.marketValue(price: price)
-            if holding.marginDebt > 0 {
-                let dailyRate = max(0, interestRate + 0.055) / 365
-                let interest = holding.marginDebt * dailyRate
-                holding.marginDebt += interest
-                holding.totalInterest += interest
-                market.totalInterest += interest
-            }
-            if listing.fundamentals.dividendPerShare > 0 {
-                let dividend = holding.shares * listing.fundamentals.dividendPerShare
-                market.pendingCash += dividend
-                market.totalDividends += dividend
-            }
-            let equity = value - holding.marginDebt
-            if holding.marginDebt > 0.5, value > 0, equity < value * 0.25 {
-                let fee = max(1, value * 0.005)
-                let cash = max(0, value - holding.marginDebt - fee)
-                let realized = cash - holding.shares * holding.averageCost
-                market.pendingCash += cash
-                market.realizedProfit += realized
-                market.forcedLiquidations += 1
-                market.lastNotice = "Margin call: \(listing.name) was liquidated for \(Int(cash))c."
-                market.trades.insert(
-                    InvestmentTrade(
-                        day: day,
-                        businessID: holding.businessID,
-                        businessName: listing.name,
-                        side: .sell,
-                        shares: holding.shares,
-                        price: price,
-                        notional: value,
-                        fee: fee,
-                        leverage: 1,
-                        cashDelta: cash,
-                        realizedProfit: realized,
-                        note: "Forced liquidation"
-                    ),
-                    at: 0
-                )
-                market.holdings.remove(at: index)
-            } else {
-                market.holdings[index] = holding
-            }
-        }
-
-        let averagePrice = market.listings
-            .filter { !$0.isBankrupt }
-            .map(\.sharePrice)
-            .reduce(0, +) / Double(max(1, market.listings.filter { !$0.isBankrupt }.count))
-        market.marketIndex = baseAverage > 0 ? 100 * averagePrice / baseAverage : 100
-        market.marketHistory.append(market.marketIndex)
-        market.marketHistory = Array(market.marketHistory.suffix(30))
-
-        let averageChange = market.listings.isEmpty
-            ? 0
-            : market.listings.map(\.dailyChangePercent).reduce(0, +) / Double(market.listings.count)
-        let targetSentiment = hhClamp(
-            0.42
-                + consumerConfidence * 0.26
-                + (1 - crime) * 0.08
-                - max(0, inflation - 0.05) * 0.5
-                - max(0, interestRate - 0.05) * 0.9
-                + averageChange * 2.2
-                + (1 - corruption) * 0.04,
-            0.05, 1
-        )
-        market.sentiment = hhClamp(market.sentiment * 0.72 + targetSentiment * 0.28, 0.05, 1)
-        market.trades = Array(market.trades.prefix(40))
-        market.portfolioHistory.append(
-            PortfolioPoint(
-                day: day,
-                value: market.marketValue,
-                cost: market.costBasis,
-                debt: market.marginDebt
-            )
-        )
-        market.portfolioHistory = Array(market.portfolioHistory.suffix(30))
-        market.lastUpdateDay = day
-        self.market = market
     }
 }
 
@@ -375,7 +243,9 @@ extension ValleyEconomy {
                 cashDelta: 0
             )
         }
-        let notional = quantity * listing.sharePrice
+        // The fill crosses the spread: buyers pay the offer, sellers get the bid.
+        let fillPrice = listing.sharePrice + listing.halfSpread
+        let notional = quantity * fillPrice
         let fee = max(1, (notional * 0.005).rounded(.up))
         let equity = notional / leverage
         let cash = (equity + fee).rounded(.up)
@@ -393,7 +263,7 @@ extension ValleyEconomy {
             businessName: listing.name,
             side: .buy,
             shares: quantity,
-            price: listing.sharePrice,
+            price: fillPrice,
             notional: notional,
             fee: fee,
             leverage: leverage,
@@ -450,13 +320,16 @@ extension ValleyEconomy {
         guard quantity >= 1, listing.sharePrice > 0 else {
             return InvestmentExecution(success: false, message: "No shares available to sell.", cashDelta: 0)
         }
-        let gross = quantity * listing.sharePrice
+        let fillPrice = max(0.05, listing.sharePrice - listing.halfSpread)
+        let gross = quantity * fillPrice
         let marginRepayment = holding.shares > 0
             ? holding.marginDebt * (quantity / holding.shares)
             : 0
         let fee = max(1, (gross * 0.005).rounded(.up))
-        let cash = floor(max(0, gross - marginRepayment - fee))
         let cost = holding.averageCost * quantity
+        let grossCash = max(0, gross - marginRepayment - fee)
+        let capitalGainsTax = grossCash - cost > 0 ? (grossCash - cost) * taxRate * 0.35 : 0
+        let cash = floor(max(0, grossCash - capitalGainsTax))
         let realized = cash - cost
         holding.shares -= quantity
         holding.marginDebt = max(0, holding.marginDebt - marginRepayment)
@@ -470,13 +343,15 @@ extension ValleyEconomy {
             businessName: listing.name,
             side: .sell,
             shares: quantity,
-            price: listing.sharePrice,
+            price: fillPrice,
             notional: gross,
             fee: fee,
             leverage: 1,
             cashDelta: cash,
             realizedProfit: realized,
-            note: realized >= 0 ? "Realized gain" : "Realized loss"
+            note: realized >= 0
+                ? "Realized gain" + (capitalGainsTax > 0 ? " · \(Int(capitalGainsTax.rounded()))c tax" : "")
+                : "Realized loss"
         )
         if holding.shares < 0.001 {
             market.holdings.remove(at: holdingIndex)

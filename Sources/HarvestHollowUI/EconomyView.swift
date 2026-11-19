@@ -31,6 +31,10 @@ public struct EconomyView: View {
                 }
                 factorSections
                 policySection
+                LedgerPolicyImpactCard(
+                    report: economy.investmentMarket.policyReport,
+                    forecast: economy.electionForecast
+                )
                 investmentSection
                 financeSection
                 agentSection

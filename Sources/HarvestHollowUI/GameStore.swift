@@ -21,7 +21,8 @@ public enum AppTab: String, CaseIterable, Identifiable {
     case quests
     case arcade
     case economy
-    case world
+    // The voxel 3D diorama is archived at Archive/3D/World3DView.swift and is
+    // deliberately out of the build; restore its tab here when it returns.
 
     public var id: String { rawValue }
 
@@ -35,7 +36,6 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .quests: return "Quests"
         case .arcade: return "Meadow Dash"
         case .economy: return "Valley Ledger"
-        case .world: return "Hollow 3D"
         }
     }
 
@@ -49,7 +49,6 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .quests: return "checklist"
         case .arcade: return "figure.run"
         case .economy: return "chart.line.uptrend.xyaxis"
-        case .world: return "cube.fill"
         }
     }
 
@@ -60,7 +59,6 @@ public enum AppTab: String, CaseIterable, Identifiable {
         case .town: return "Town"
         case .arcade: return "Play"
         case .economy: return "Valley"
-        case .world: return "3D"
         default: return title
         }
     }
@@ -892,6 +890,31 @@ public final class GameStore: ObservableObject {
     ) -> InvestmentExecution {
         finishInvestmentAction(
             engine.sellBusinessShares(businessID: businessID, shares: shares)
+        )
+    }
+
+    @discardableResult
+    public func shortBusinessShares(
+        businessID: UUID,
+        shares: Double,
+        leverage: Double
+    ) -> InvestmentExecution {
+        finishInvestmentAction(
+            engine.shortBusinessShares(
+                businessID: businessID,
+                shares: shares,
+                leverage: leverage
+            )
+        )
+    }
+
+    @discardableResult
+    public func coverBusinessShares(
+        businessID: UUID,
+        shares: Double
+    ) -> InvestmentExecution {
+        finishInvestmentAction(
+            engine.coverBusinessShares(businessID: businessID, shares: shares)
         )
     }
 

@@ -46,8 +46,10 @@ public struct FishingView: View {
         .scrollIndicators(.hidden)
         .background(HHTheme.cream)
         .navigationTitle("Hollow Pond")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        #endif
         .sheet(item: $selectedFish) { fish in
             FishDetailSheet(fish: fish)
                 .environmentObject(store)
